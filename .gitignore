@@ -1,0 +1,7 @@
+*.a
+*.exe
+*.o
+*.swp
+word_search
+letter_pool
+

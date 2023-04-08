@@ -1,0 +1,89 @@
+/*
+ * Find words in a given list spellable with a limited pool of letters.
+ * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * Usage: ./word_search alphabet /path/to/word/list
+ *
+ * For example, to find English language isograms (words spelled using
+ * each of their letters exactly once), you could try:
+ * ./word_search abcdefghijklmnopqrstuvwxyz /usr/share/dict/words
+ *
+ * Matching words are printed to stdout.
+ */
+
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "letter_pool.h"
+
+/*
+ * Remove trailing whitespace from 'line'.
+ */
+static void remove_whitespace(char *line);
+
+void
+remove_whitespace(char *line)
+{
+    char *curr;
+    for (curr = line; *curr != '\0'; ++curr) {
+        if (isspace(*curr)) {
+            *curr = '\0';
+            break;
+        }
+    }
+}
+
+int
+main(int argc, char **argv)
+{
+    FILE *list;
+    char *letters, *list_path, *line;
+    size_t len;
+    ssize_t nread;
+    unsigned int pool[POOL_SIZE];
+
+    pool_reset(pool);
+    if (argc < 3) {
+        fprintf(stderr,
+                "Usage: %s alphabet /path/to/word/list\n",
+                argv[0]);
+        return 1;
+    }
+
+    letters = argv[1];
+    pool_add(pool, letters);
+
+    list_path = argv[2];
+    list = fopen(list_path, "r");
+    if (list == NULL) {
+        fprintf(stderr,
+                "Failed to open: %s\n",
+                list_path);
+        return 1;
+    }
+
+    line = NULL;
+    while ((nread = getline(&line, &len, list)) != -1) {
+        remove_whitespace(line);
+        if (pool_can_spell(pool, line))
+            printf("%s\n", line);
+    }
+
+    free(line);
+    fclose(list);
+}
