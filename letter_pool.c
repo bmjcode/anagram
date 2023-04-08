@@ -80,18 +80,30 @@ pool_reset(unsigned int *pool)
 }
 
 bool
+pool_is_empty(unsigned int *pool)
+{
+    int i;
+
+    if (pool == NULL)
+        return false; /* vacuous since there is no pool */
+
+    for (i = 0; i < POOL_SIZE; ++i) {
+        if (pool[i] > 0)
+            return false;
+    }
+    return true;
+}
+
+void
 pool_copy(unsigned int *src, unsigned int *dst)
 {
     int i;
 
     if ((src == NULL) || (dst == NULL))
-        return false;
+        return;
 
-    for (i = 0; i < POOL_SIZE; ++i) {
-        if (!(dst[i] = src[i]))
-            return false;
-    }
-    return true;
+    for (i = 0; i < POOL_SIZE; ++i)
+        dst[i] = src[i];
 }
 
 void

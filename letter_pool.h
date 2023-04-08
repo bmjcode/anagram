@@ -63,12 +63,17 @@ bool pool_can_spell(unsigned int *pool, const char *word);
 void pool_reset(unsigned int *pool);
 
 /*
+ * Return whether the letter pool is empty (all counts are zero).
+ */
+bool pool_is_empty(unsigned int *pool);
+
+/*
  * Make a copy of a letter pool.
  *
  * This does not do any bounds checking. The caller is responsible
  * to ensure both src and dst are large enough to hold the pool.
  */
-bool pool_copy(unsigned int *src, unsigned int *dst);
+void pool_copy(unsigned int *src, unsigned int *dst);
 
 /*
  * Print the contents of the pool to stdout. Intended for debugging.
