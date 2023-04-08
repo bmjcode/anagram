@@ -69,4 +69,5 @@ main(int argc, char **argv)
 
     free(line);
     fclose(list);
+    return 0;
 }
