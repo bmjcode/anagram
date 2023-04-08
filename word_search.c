@@ -25,28 +25,11 @@
  * Matching words are printed to stdout.
  */
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "letter_pool.h"
-
-/*
- * Remove trailing whitespace from 'line'.
- */
-static void remove_whitespace(char *line);
-
-void
-remove_whitespace(char *line)
-{
-    char *curr;
-    for (curr = line; *curr != '\0'; ++curr) {
-        if (isspace(*curr)) {
-            *curr = '\0';
-            break;
-        }
-    }
-}
+#include "util.h"
 
 int
 main(int argc, char **argv)
