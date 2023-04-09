@@ -6,7 +6,7 @@ DEFAULT = anagram_search word_search
 all: anagram_search word_search
 
 letter_pool: letter_pool.c
-	$(CC) -DTEST_LETTER_POOL -o $@ $+ $(LDFLAGS)
+	$(CC) $(CFLAGS) -DTEST_LETTER_POOL -o $@ $+ $(LDFLAGS)
 
 anagram_search: anagram_search.o letter_pool.o util.o
 	$(CC) -o $@ $+ $(LDFLAGS)
