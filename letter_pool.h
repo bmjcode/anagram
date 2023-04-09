@@ -37,6 +37,12 @@ extern "C" {
         ((letter) >= POOL_START && (letter) <= POOL_STOP)
 
 /*
+ * Return whether there is at least one of 'letter' in the pool.
+ */
+#define pool_contains(pool, letter) \
+        ((pool)[(int)((letter) - POOL_START)] >= 1)
+
+/*
  * Add alphabetic characters in 'letters' to the pool.
  */
 void pool_add(unsigned int *pool, const char *letters);
