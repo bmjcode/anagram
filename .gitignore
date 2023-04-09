@@ -3,5 +3,6 @@
 *.o
 *.swp
 anagram_search
+is_spellable
 letter_pool
 word_search
