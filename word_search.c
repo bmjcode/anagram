@@ -22,6 +22,7 @@
  * each of their letters exactly once), you could try:
  * ./word_search abcdefghijklmnopqrstuvwxyz /usr/share/dict/words
  *
+ * The formatting of the word list is one word per line, case-sensitive.
  * Matching words are printed to stdout.
  */
 

@@ -21,6 +21,7 @@
  * For example, to find anagrams of the word "leprechaun", you could try:
  * ./anagram_search leprechaun /usr/share/dict/words
  *
+ * The formatting of the word list is one word per line, case-sensitive.
  * Found anagrams are printed to stdout.
  */
 
