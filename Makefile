@@ -21,4 +21,4 @@ word_search: word_search.o letter_pool.o util.o
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 clean:
-	rm -f letter_pool anagram_search word_search *.exe *.o
+	rm -f anagram_search is_spellable letter_pool word_search *.exe *.o
