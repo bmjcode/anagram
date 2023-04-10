@@ -22,6 +22,10 @@
 
 #include "word_list.h"
 
+/* Length of the line buffer for word_list_read() */
+/* This should fit the longest word we expect to encounter */
+#define BUF_SIZE 64
+
 struct word_list *
 word_list_add(struct word_list *prev, char *word)
 {
@@ -62,13 +66,22 @@ word_list_read(struct word_list *prev, FILE *fp)
 {
     struct word_list *head, *curr;
     char *buf;
-    size_t len;
-    ssize_t nread;
 
     head = NULL;
-    buf = NULL;
-    while ((nread = getline(&buf, &len, fp)) != -1) {
+    while (!feof(fp)) {
         char *c;
+
+        /* Allocate memory */
+        if ((buf = malloc(BUF_SIZE * sizeof(char))) == NULL)
+            goto failsafe;
+
+        /* Read the next line from the file */
+        if (fgets(buf, BUF_SIZE, fp) == NULL) {
+            /* Note we expect this to fail at EOF */
+            if (buf != NULL)
+                free(buf);
+            break;
+        }
 
         /* Strip out trailing whitespace */
         for (c = buf; *c != '\0'; ++c) {
@@ -81,21 +94,27 @@ word_list_read(struct word_list *prev, FILE *fp)
         /* Add the word to the list */
         /* curr takes ownership of buf */
         curr = word_list_add(prev, buf);
-        if (curr == NULL) {
-            /* Failed to allocate enough memory */
-            if (head != NULL)
-                word_list_free(head);
-            return NULL;
-        } else
+        if (curr == NULL)
+            goto failsafe;
+        else
             prev = curr;
 
         /* Save a pointer to the first word */
         if (head == NULL)
             head = curr;
 
-        /* Tell getline() to allocate a new buffer for the next one */
+        /* Indicate the buffer is no longer our problem */
         buf = NULL;
     }
 
     return head;
+
+failsafe:
+    if (head != NULL)
+        word_list_free(head);
+
+    if (buf != NULL)
+        free(buf);
+
+    return NULL;
 }
