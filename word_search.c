@@ -62,13 +62,13 @@ main(int argc, char **argv)
 
     /* Read words from the list */
     word_list = word_list_read(NULL, fp);
+    fclose(fp);
     if (word_list == NULL) {
         fprintf(stderr,
                 "Failed to read word list: %s\n",
                 list_path);
         return 1;
     }
-    fclose(fp);
 
     /* Iterate through the list looking for spellable words */
     for (curr = word_list; curr != NULL; curr = curr->next) {
