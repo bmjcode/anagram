@@ -30,7 +30,6 @@
 #include <string.h>
 
 #include "letter_pool.h"
-#include "util.h"
 #include "word_list.h"
 
 /*

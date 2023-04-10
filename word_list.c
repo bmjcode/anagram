@@ -15,11 +15,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "util.h"
 #include "word_list.h"
 
 struct word_list *
@@ -68,8 +68,15 @@ word_list_read(struct word_list *prev, FILE *fp)
     head = NULL;
     buf = NULL;
     while ((nread = getline(&buf, &len, fp)) != -1) {
+        char *c;
+
         /* Strip out trailing whitespace */
-        remove_whitespace(buf);
+        for (c = buf; *c != '\0'; ++c) {
+            if (isspace(*c)) {
+                *c = '\0';
+                break;
+            }
+        }
 
         /* Add the word to the list */
         /* curr takes ownership of buf */
