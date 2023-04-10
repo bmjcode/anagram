@@ -5,13 +5,13 @@ LDFLAGS ?=
 DEFAULT = anagram_search is_spellable word_search
 all: anagram_search is_spellable word_search
 
-anagram_search: anagram_search.o letter_pool.o util.o
+anagram_search: anagram_search.o letter_pool.o util.o word_list.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
 is_spellable: is_spellable.o letter_pool.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
-word_search: word_search.o letter_pool.o util.o
+word_search: word_search.o letter_pool.o util.o word_list.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
 %.o: %.c

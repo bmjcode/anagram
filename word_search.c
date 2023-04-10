@@ -31,14 +31,14 @@
 
 #include "letter_pool.h"
 #include "util.h"
+#include "word_list.h"
 
 int
 main(int argc, char **argv)
 {
-    FILE *list;
-    char *letters, *list_path, *line;
-    size_t len;
-    ssize_t nread;
+    FILE *fp;
+    struct word_list *word_list, *curr;
+    char *letters, *list_path;
     unsigned int pool[POOL_SIZE];
 
     pool_reset(pool);
@@ -53,22 +53,31 @@ main(int argc, char **argv)
     pool_add(pool, letters);
 
     list_path = argv[2];
-    list = fopen(list_path, "r");
-    if (list == NULL) {
+    fp = fopen(list_path, "r");
+    if (fp == NULL) {
         fprintf(stderr,
                 "Failed to open: %s\n",
                 list_path);
         return 1;
     }
 
-    line = NULL;
-    while ((nread = getline(&line, &len, list)) != -1) {
-        remove_whitespace(line);
-        if (pool_can_spell(pool, line))
-            printf("%s\n", line);
+    /* Read words from the list */
+    word_list = word_list_read(NULL, fp);
+    if (word_list == NULL) {
+        fprintf(stderr,
+                "Failed to read word list: %s\n",
+                list_path);
+        return 1;
+    }
+    fclose(fp);
+
+    /* Iterate through the list looking for spellable words */
+    for (curr = word_list; curr != NULL; curr = curr->next) {
+        if (pool_can_spell(pool, curr->word))
+            printf("%s\n", curr->word);
     }
 
-    free(line);
-    fclose(list);
+    /* Free memory and return success */
+    word_list_free(word_list);
     return 0;
 }
