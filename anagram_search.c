@@ -62,7 +62,7 @@ make_sentence(struct word_list *word_list,
         size_t s_len;
 
         if (curr->word == NULL)
-            continue;
+            break; /* best to assume something's really gone wrong here */
 
         /* Make sure we have enough letters to spell this word */
         if (!pool_can_spell(pool, curr->word))
