@@ -60,7 +60,8 @@ make_sentence(FILE *list, unsigned int *pool, const char *prev_sentence)
     rewind(list);
     word = NULL;
     while ((nread = getline(&word, &len, list)) != -1) {
-        char *new_sentence;
+        char *new_sentence, *n, *w;
+        size_t s_len;
 
         /* Make sure we have enough letters to spell this word */
         remove_whitespace(word);
@@ -73,19 +74,26 @@ make_sentence(FILE *list, unsigned int *pool, const char *prev_sentence)
         /* Remove this word's letters from the pool */
         pool_subtract(pool, word);
 
+        /* Calculate how much memory to allocate for the new sentence */
+        s_len = strlen(word) + 1; /* extra for the trailing '\0' */
+        if (prev_sentence != NULL)
+            s_len += strlen(prev_sentence) + 1; /* extra for a space */
+
         /* Add this word to our sentence */
-        if (prev_sentence == NULL)
-            new_sentence = strdup(word);
-        else {
-            size_t s_len, w_len;
-            s_len = strlen(prev_sentence);
-            w_len = strlen(word);
-            /* The two extra bytes are for a space and a trailing '\0' */
-            new_sentence = malloc((s_len + w_len + 2) * sizeof(char));
-            strncpy(new_sentence, prev_sentence, s_len + 1);
-            strncat(new_sentence, " ", 1);
-            strncat(new_sentence, word, w_len);
+        /* Inlining this may save a few microseconds over string.h */
+        new_sentence = malloc(s_len * sizeof(char));
+        n = new_sentence;
+        if (prev_sentence != NULL) {
+            const char *p;
+            p = prev_sentence;
+            while (*p != '\0')
+                *n++ = *p++;
+            *n++ = ' ';
         }
+        w = word;
+        while (*w != '\0')
+            *n++ = *w++;
+        *n = '\0';
 
         /* Call this function recursively to extend the sentence */
         make_sentence(list, pool, new_sentence);
