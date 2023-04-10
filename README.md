@@ -9,3 +9,5 @@ All these years later, I got curious how many more words could be spelled with t
 `./word_search leprechaun /usr/share/dict/words`
 
 And *that* is how you cheat at a game intended to distract impatient children.
+
+The included word list [web2.txt](web2.txt) is from *Webster's Second International Dictionary* by way of [OpenBSD](https://cvsweb.openbsd.org/src/share/dict/). The 1934 copyright has lapsed.
