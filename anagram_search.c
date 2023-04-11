@@ -72,7 +72,7 @@ make_sentence(struct word_list *word_list,
         pool_subtract(pool, curr->word);
 
         /* Calculate how much memory to allocate for the new sentence */
-        s_len = strlen(curr->word) + 1; /* extra for the trailing '\0' */
+        s_len = curr->length + 1; /* extra for the trailing '\0' */
         if (prev_sentence != NULL)
             s_len += strlen(prev_sentence) + 1; /* extra for a space */
 

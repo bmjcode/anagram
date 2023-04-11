@@ -25,6 +25,7 @@ extern "C" {
 
 struct word_list {
     char *word;
+    size_t length;
     struct word_list *next;
 };
 
@@ -33,10 +34,9 @@ struct word_list {
  * Add a word to the list.
  *
  * If prev is NULL, this starts a new list.
- * The struct word_list takes responsibility for managing 'word''s memory.
  * Returns a pointer to the newly added word.
  */
-struct word_list *word_list_add(struct word_list *prev, char *word);
+struct word_list *word_list_add(struct word_list *prev, const char *word);
 
 /*
  * Free memory used by a word list.

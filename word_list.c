@@ -22,21 +22,37 @@
 
 #include "word_list.h"
 
-/* Length of the line buffer for word_list_read() */
-/* This should fit the longest word we expect to encounter */
-#define BUF_SIZE 64
-
 struct word_list *
-word_list_add(struct word_list *prev, char *word)
+word_list_add(struct word_list *prev, const char *word)
 {
     struct word_list *next;
+    const char *c;
 
     next = malloc(sizeof(struct word_list));
     if (next == NULL)
         return NULL; /* failed to allocate memory */
 
-    next->word = word;
+    next->length = 0;
     next->next = NULL;
+
+    /* Figure out how much memory to allocate */
+    for (c = word; !((*c == '\0') || (*c == '\n')); ++c)
+        ++next->length;
+
+    /* Allocate memory */
+    next->word = malloc((next->length + 1) * sizeof(char));
+    if (next->word == NULL) {
+        free(next);
+        return NULL;
+    }
+
+    /* Copy the word into our own memory */
+    if (strncpy(next->word, word, next->length) == NULL) {
+        free(next->word);
+        free(next);
+        return NULL;
+    }
+    next->word[next->length] = '\0';
 
     /* If there's a previous item, link it to this one */
     if (prev != NULL)
@@ -65,56 +81,23 @@ struct word_list *
 word_list_read(struct word_list *prev, FILE *fp)
 {
     struct word_list *head, *curr;
-    char *buf;
+    char buf[64]; /* that should be long enough for most words */
 
     head = NULL;
-    while (!feof(fp)) {
-        char *c;
-
-        /* Allocate memory */
-        if ((buf = malloc(BUF_SIZE * sizeof(char))) == NULL)
-            goto failsafe;
-
-        /* Read the next line from the file */
-        if (fgets(buf, BUF_SIZE, fp) == NULL) {
-            /* Note we expect this to fail at EOF */
-            if (buf != NULL)
-                free(buf);
-            break;
-        }
-
-        /* Strip out trailing whitespace */
-        for (c = buf; *c != '\0'; ++c) {
-            if (isspace(*c)) {
-                *c = '\0';
-                break;
-            }
-        }
-
+    while (fgets(buf, sizeof(buf), fp) != NULL) {
         /* Add the word to the list */
-        /* curr takes ownership of buf */
         curr = word_list_add(prev, buf);
-        if (curr == NULL)
-            goto failsafe;
-        else
+        if (curr == NULL) {
+            if (head != NULL)
+                word_list_free(head);
+            return NULL;
+        } else
             prev = curr;
 
         /* Save a pointer to the first word */
         if (head == NULL)
             head = curr;
-
-        /* Indicate the buffer is no longer our problem */
-        buf = NULL;
     }
 
     return head;
-
-failsafe:
-    if (head != NULL)
-        word_list_free(head);
-
-    if (buf != NULL)
-        free(buf);
-
-    return NULL;
 }
