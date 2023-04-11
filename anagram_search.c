@@ -33,56 +33,85 @@
 #include "word_list.h"
 
 /*
+ * Structure representing the state of make_sentence().
+ */
+struct sentence_info {
+    struct word_list *word_list;
+    unsigned int *pool;
+    char *sentence;
+    size_t length;
+};
+
+/*
+ * Initialize a sentence_info structure.
+ */
+static void sentence_info_init(struct sentence_info *si);
+
+/*
  * Make a "sentence" using words formed from letters in the pool.
  * For our purposes a sentence is any combination of one or more words
  * separated by spaces.
  */
-static void make_sentence(struct word_list *word_list,
-                          unsigned int *pool,
-                          const char *prev_sentence);
+static void make_sentence(struct sentence_info *si);
 
 void
-make_sentence(struct word_list *word_list,
-              unsigned int *pool,
-              const char *prev_sentence)
+sentence_info_init(struct sentence_info *si)
+{
+    if (si == NULL)
+        return;
+
+    si->word_list = NULL;
+    si->pool = NULL;
+    si->sentence = NULL;
+    si->length = 0;
+}
+
+void
+make_sentence(struct sentence_info *si)
 {
     struct word_list *curr;
 
-    if ((word_list == NULL) || (pool == NULL))
+    if ((si == NULL) || (si->word_list == NULL) || (si->pool == NULL))
         return;
 
-    if (pool_is_empty(pool) && (prev_sentence != NULL)) {
-        printf("%s\n", prev_sentence);
+    if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
+        printf("%s\n", si->sentence);
         return;
     }
 
     /* Iterate through the word list */
-    for (curr = word_list; curr != NULL; curr = curr->next) {
-        char *new_sentence, *n, *w;
-        size_t s_len;
+    for (curr = si->word_list; curr != NULL; curr = curr->next) {
+        struct sentence_info nsi;
+        char *n, *w;
 
         if (curr->word == NULL)
             break; /* best to assume something's really gone wrong here */
 
         /* Make sure we have enough letters to spell this word */
-        if (!pool_can_spell(pool, curr->word))
+        if (!pool_can_spell(si->pool, curr->word))
             continue;
 
-        /* Remove this word's letters from the pool */
-        pool_subtract(pool, curr->word);
+        sentence_info_init(&nsi);
+        nsi.word_list = si->word_list;
+        nsi.pool = si->pool;
 
-        /* Calculate how much memory to allocate for the new sentence */
-        s_len = curr->length + 1; /* extra for the trailing '\0' */
-        if (prev_sentence != NULL)
-            s_len += strlen(prev_sentence) + 1; /* extra for a space */
+        /* Determine how much memory to allocate */
+        if (si->sentence == NULL)
+            nsi.length = curr->length;
+        else
+            nsi.length = si->length + curr->length + 1; /* add a space */
+
+        /* Allocate memory for the new sentence */
+        nsi.sentence = malloc((nsi.length + 1) * sizeof(char));
+        if (nsi.sentence == NULL)
+            break;
 
         /* Add this word to our sentence */
         /* Inlining this may save a few microseconds over string.h */
-        new_sentence = malloc(s_len * sizeof(char));
-        n = new_sentence;
-        if (prev_sentence != NULL) {
-            const char *p;
-            p = prev_sentence;
+        n = nsi.sentence;
+        if (si->sentence != NULL) {
+            char *p;
+            p = si->sentence;
             while (*p != '\0')
                 *n++ = *p++;
             *n++ = ' ';
@@ -92,12 +121,15 @@ make_sentence(struct word_list *word_list,
             *n++ = *w++;
         *n = '\0';
 
+        /* Remove this word's letters from the pool */
+        pool_subtract(si->pool, curr->word);
+
         /* Call this function recursively to extend the sentence */
-        make_sentence(word_list, pool, new_sentence);
-        free(new_sentence);
+        make_sentence(&nsi);
+        free(nsi.sentence);
 
         /* Restore the pool and our previous position in the word list */
-        pool_add(pool, curr->word);
+        pool_add(si->pool, curr->word);
     }
 }
 
@@ -105,9 +137,12 @@ int
 main(int argc, char **argv)
 {
     FILE *fp;
-    struct word_list *word_list;
+    struct sentence_info si;
     char *letters, *list_path;
     unsigned int pool[POOL_SIZE];
+
+    sentence_info_init(&si);
+    si.pool = pool;
 
     pool_reset(pool);
     if (argc < 3) {
@@ -130,9 +165,9 @@ main(int argc, char **argv)
     }
 
     /* Read words from the list */
-    word_list = word_list_read(NULL, fp);
+    si.word_list = word_list_read(NULL, fp);
     fclose(fp);
-    if (word_list == NULL) {
+    if (si.word_list == NULL) {
         fprintf(stderr,
                 "Failed to read word list: %s\n",
                 list_path);
@@ -140,9 +175,9 @@ main(int argc, char **argv)
     }
 
     /* Search for valid sentences */
-    make_sentence(word_list, pool, NULL);
+    make_sentence(&si);
 
     /* Free memory and return success */
-    word_list_free(word_list);
+    word_list_free(si.word_list);
     return 0;
 }
