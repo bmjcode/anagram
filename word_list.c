@@ -30,23 +30,21 @@ word_list_add(struct word_list *prev, const char *word, size_t *count)
 
     next = malloc(sizeof(struct word_list));
     if (next == NULL)
-        return NULL; /* failed to allocate memory */
+        return NULL;
 
     next->length = 0;
     next->next = NULL;
 
-    /* Figure out how much memory to allocate */
+    /* Copy the word into our own memory */
     for (c = word; !((*c == '\0') || (*c == '\n')); ++c)
         ++next->length;
 
-    /* Allocate memory */
     next->word = malloc((next->length + 1) * sizeof(char));
     if (next->word == NULL) {
         free(next);
         return NULL;
     }
 
-    /* Copy the word into our own memory */
     if (strncpy(next->word, word, next->length) == NULL) {
         free(next->word);
         free(next);
@@ -54,7 +52,6 @@ word_list_add(struct word_list *prev, const char *word, size_t *count)
     }
     next->word[next->length] = '\0';
 
-    /* If there's a previous item, link it to this one */
     if (prev != NULL)
         prev->next = next;
 
@@ -88,7 +85,6 @@ word_list_read(struct word_list *prev, FILE *fp, size_t *count)
 
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
-        /* Add the word to the list */
         curr = word_list_add(prev, buf, count);
         if (curr == NULL) {
             if (head != NULL)

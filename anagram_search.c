@@ -77,11 +77,11 @@ make_sentence(struct sentence_info *si)
         return;
 
     if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
+        /* We've completed a sentence */
         printf("%s\n", si->sentence);
         return;
     }
 
-    /* Iterate through the word list */
     for (curr = si->word_list; curr != NULL; curr = curr->next) {
         struct sentence_info nsi;
         char *n, *w;
@@ -89,7 +89,6 @@ make_sentence(struct sentence_info *si)
         if (curr->word == NULL)
             break; /* best to assume something's really gone wrong here */
 
-        /* Make sure we have enough letters to spell this word */
         if (!pool_can_spell(si->pool, curr->word))
             continue;
 
@@ -97,19 +96,17 @@ make_sentence(struct sentence_info *si)
         nsi.word_list = si->word_list;
         nsi.pool = si->pool;
 
-        /* Determine how much memory to allocate */
         if (si->sentence == NULL)
             nsi.length = curr->length;
         else
             nsi.length = si->length + curr->length + 1; /* add a space */
 
-        /* Allocate memory for the new sentence */
         nsi.sentence = malloc((nsi.length + 1) * sizeof(char));
         if (nsi.sentence == NULL)
             break;
 
-        /* Add this word to our sentence */
-        /* Inlining this may save a few microseconds over string.h */
+        /* Inlining this avoids strcat()'s excessive seeking */
+        /* This isn't overflow-safe but neither is anything else here */
         n = nsi.sentence;
         if (si->sentence != NULL) {
             char *p;
@@ -126,11 +123,11 @@ make_sentence(struct sentence_info *si)
         /* Remove this word's letters from the pool */
         pool_subtract(si->pool, curr->word);
 
-        /* Call this function recursively to extend the sentence */
+        /* Extend the sentence with our new phrase */
         make_sentence(&nsi);
         free(nsi.sentence);
 
-        /* Restore the pool and our previous position in the word list */
+        /* Restore the pool for the next cycle */
         pool_add(si->pool, curr->word);
     }
 }
@@ -166,7 +163,6 @@ main(int argc, char **argv)
         return 1;
     }
 
-    /* Read words from the list */
     si.word_list = word_list_read(NULL, fp, &si.word_count);
     fclose(fp);
     if (si.word_list == NULL) {
@@ -179,7 +175,6 @@ main(int argc, char **argv)
     /* Search for valid sentences */
     make_sentence(&si);
 
-    /* Free memory and return success */
     word_list_free(si.word_list);
     return 0;
 }
