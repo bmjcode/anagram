@@ -26,17 +26,17 @@
  * Matching words are printed to stdout.
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "letter_pool.h"
-#include "word_list.h"
 
 int
 main(int argc, char **argv)
 {
     FILE *fp;
-    struct word_list *word_list, *curr;
+    char buf[64];
     char *letters, *list_path;
     unsigned int pool[POOL_SIZE];
 
@@ -60,23 +60,20 @@ main(int argc, char **argv)
         return 1;
     }
 
-    /* Read words from the list */
-    word_list = word_list_read(NULL, fp, NULL);
+    while (fgets(buf, sizeof(buf), fp) != NULL) {
+        char *c = buf;
+        while (*c != '\0') {
+            if (isspace(*c)) {
+                /* Limit one word per line */
+                *c = '\0';
+                break;
+            }
+            ++c;
+        }
+        if (pool_can_spell(pool, buf))
+            printf("%s\n", buf);
+    }
+
     fclose(fp);
-    if (word_list == NULL) {
-        fprintf(stderr,
-                "Failed to read word list: %s\n",
-                list_path);
-        return 1;
-    }
-
-    /* Iterate through the list looking for spellable words */
-    for (curr = word_list; curr != NULL; curr = curr->next) {
-        if (pool_can_spell(pool, curr->word))
-            printf("%s\n", curr->word);
-    }
-
-    /* Free memory and return success */
-    word_list_free(word_list);
     return 0;
 }
