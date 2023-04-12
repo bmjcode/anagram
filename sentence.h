@@ -18,11 +18,28 @@
 #ifndef SENTENCE_H
 #define SENTENCE_H
 
+#include <stdbool.h>
+
 #include "letter_pool.h"
 #include "phrase_list.h"
 
+struct sentence_info;
+
 /*
- * Structure representing the state of make_sentence().
+ * Callback function to perform a validation check on a sentence.
+ * Return true to accept, false to reject.
+ * If none is specified, all potential sentences are accepted.
+ */
+typedef bool (*sentence_check_cb)(struct sentence_info *si);
+
+/*
+ * Callback function when a sentence is completed.
+ * If none is specified, the completed sentence is printed to stdout.
+ */
+typedef void (*sentence_done_cb)(struct sentence_info *si);
+
+/*
+ * Structure representing the state of sentence_build().
  */
 struct sentence_info {
     struct phrase_list *phrase_list;
@@ -30,6 +47,11 @@ struct sentence_info {
     unsigned int *pool;
     char *sentence;
     size_t length;
+
+    /* Callback functions */
+    sentence_check_cb check_cb;
+    sentence_done_cb done_cb;
+    void *user_data; /* user-specified arbitrary data */
 };
 
 /*

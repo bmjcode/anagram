@@ -31,6 +31,10 @@ sentence_info_init(struct sentence_info *si)
     si->pool = NULL;
     si->sentence = NULL;
     si->length = 0;
+
+    si->check_cb = NULL;
+    si->done_cb = NULL;
+    si->user_data = NULL;
 }
 
 void
@@ -40,10 +44,15 @@ sentence_build(struct sentence_info *si)
 
     if ((si == NULL) || (si->phrase_list == NULL) || (si->pool == NULL))
         return;
+    else if (!((si->check_cb == NULL) || si->check_cb(si)))
+        return;
 
     if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
         /* We've completed a sentence */
-        printf("%s\n", si->sentence);
+        if (si->done_cb == NULL)
+            printf("%s\n", si->sentence);
+        else
+            si->done_cb(si);
         return;
     }
 
@@ -60,6 +69,9 @@ sentence_build(struct sentence_info *si)
         sentence_info_init(&nsi);
         nsi.phrase_list = si->phrase_list;
         nsi.pool = si->pool;
+        nsi.check_cb = si->check_cb;
+        nsi.done_cb = si->done_cb;
+        nsi.user_data = si->user_data;
 
         if (si->sentence == NULL)
             nsi.length = curr->length;
