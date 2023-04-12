@@ -61,7 +61,7 @@ main(int argc, char **argv)
     }
 
     /* Read words from the list */
-    word_list = word_list_read(NULL, fp);
+    word_list = word_list_read(NULL, fp, NULL);
     fclose(fp);
     if (word_list == NULL) {
         fprintf(stderr,

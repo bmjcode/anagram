@@ -23,7 +23,7 @@
 #include "word_list.h"
 
 struct word_list *
-word_list_add(struct word_list *prev, const char *word)
+word_list_add(struct word_list *prev, const char *word, size_t *count)
 {
     struct word_list *next;
     const char *c;
@@ -58,6 +58,9 @@ word_list_add(struct word_list *prev, const char *word)
     if (prev != NULL)
         prev->next = next;
 
+    if (count != NULL)
+        ++*count;
+
     return next;
 }
 
@@ -78,7 +81,7 @@ word_list_free(struct word_list *first)
 }
 
 struct word_list *
-word_list_read(struct word_list *prev, FILE *fp)
+word_list_read(struct word_list *prev, FILE *fp, size_t *count)
 {
     struct word_list *head, *curr;
     char buf[64]; /* that should be long enough for most words */
@@ -86,7 +89,7 @@ word_list_read(struct word_list *prev, FILE *fp)
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
         /* Add the word to the list */
-        curr = word_list_add(prev, buf);
+        curr = word_list_add(prev, buf, count);
         if (curr == NULL) {
             if (head != NULL)
                 word_list_free(head);

@@ -36,7 +36,8 @@ struct word_list {
  * If prev is NULL, this starts a new list.
  * Returns a pointer to the newly added word.
  */
-struct word_list *word_list_add(struct word_list *prev, const char *word);
+struct word_list *word_list_add(struct word_list *prev,
+				const char *word, size_t *count);
 
 /*
  * Free memory used by a word list.
@@ -49,7 +50,9 @@ void word_list_free(struct word_list *first);
  * The file pointed to by 'fp' should be opened in mode "r".
  * Returns a pointer to the first item in the list.
  */
-struct word_list *word_list_read(struct word_list *prev, FILE *fp);
+struct word_list *word_list_read(struct word_list *prev,
+                                 FILE *fp,
+                                 size_t *count);
 
 
 #ifdef __cplusplus

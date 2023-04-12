@@ -37,6 +37,7 @@
  */
 struct sentence_info {
     struct word_list *word_list;
+    size_t word_count;
     unsigned int *pool;
     char *sentence;
     size_t length;
@@ -61,6 +62,7 @@ sentence_info_init(struct sentence_info *si)
         return;
 
     si->word_list = NULL;
+    si->word_count = 0;
     si->pool = NULL;
     si->sentence = NULL;
     si->length = 0;
@@ -165,7 +167,7 @@ main(int argc, char **argv)
     }
 
     /* Read words from the list */
-    si.word_list = word_list_read(NULL, fp);
+    si.word_list = word_list_read(NULL, fp, &si.word_count);
     fclose(fp);
     if (si.word_list == NULL) {
         fprintf(stderr,
