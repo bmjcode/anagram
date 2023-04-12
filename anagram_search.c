@@ -31,105 +31,7 @@
 
 #include "letter_pool.h"
 #include "phrase_list.h"
-
-/*
- * Structure representing the state of make_sentence().
- */
-struct sentence_info {
-    struct phrase_list *phrase_list;
-    size_t phrase_count;
-    unsigned int *pool;
-    char *sentence;
-    size_t length;
-};
-
-/*
- * Initialize a sentence_info structure.
- */
-static void sentence_info_init(struct sentence_info *si);
-
-/*
- * Make a "sentence" using phrases formed from letters in the pool.
- * For our purposes a sentence is any combination of one or more phrases
- * separated by spaces.
- */
-static void make_sentence(struct sentence_info *si);
-
-void
-sentence_info_init(struct sentence_info *si)
-{
-    if (si == NULL)
-        return;
-
-    si->phrase_list = NULL;
-    si->phrase_count = 0;
-    si->pool = NULL;
-    si->sentence = NULL;
-    si->length = 0;
-}
-
-void
-make_sentence(struct sentence_info *si)
-{
-    struct phrase_list *curr;
-
-    if ((si == NULL) || (si->phrase_list == NULL) || (si->pool == NULL))
-        return;
-
-    if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
-        /* We've completed a sentence */
-        printf("%s\n", si->sentence);
-        return;
-    }
-
-    for (curr = si->phrase_list; curr != NULL; curr = curr->next) {
-        struct sentence_info nsi;
-        char *n, *p;
-
-        if (curr->phrase == NULL)
-            break; /* best to assume something's really gone wrong here */
-
-        if (!pool_can_spell(si->pool, curr->phrase))
-            continue;
-
-        sentence_info_init(&nsi);
-        nsi.phrase_list = si->phrase_list;
-        nsi.pool = si->pool;
-
-        if (si->sentence == NULL)
-            nsi.length = curr->length;
-        else
-            nsi.length = si->length + curr->length + 1; /* add a space */
-
-        nsi.sentence = malloc((nsi.length + 1) * sizeof(char));
-        if (nsi.sentence == NULL)
-            break;
-
-        /* Inlining this avoids strcat()'s excessive seeking */
-        /* This isn't overflow-safe but neither is anything else here */
-        n = nsi.sentence;
-        if (si->sentence != NULL) {
-            p = si->sentence;
-            while (*p != '\0')
-                *n++ = *p++;
-            *n++ = ' ';
-        }
-        p = curr->phrase;
-        while (*p != '\0')
-            *n++ = *p++;
-        *n = '\0';
-
-        /* Remove this phrase's letters from the pool */
-        pool_subtract(si->pool, curr->phrase);
-
-        /* Extend the sentence with our new phrase */
-        make_sentence(&nsi);
-        free(nsi.sentence);
-
-        /* Restore the pool for the next cycle */
-        pool_add(si->pool, curr->phrase);
-    }
-}
+#include "sentence.h"
 
 int
 main(int argc, char **argv)
@@ -172,7 +74,7 @@ main(int argc, char **argv)
     }
 
     /* Search for valid sentences */
-    make_sentence(&si);
+    sentence_build(&si);
 
     phrase_list_free(si.phrase_list);
     return 0;
