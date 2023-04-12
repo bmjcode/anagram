@@ -6,7 +6,7 @@ One day my siblings and I took up the challenge. The 30 or so spaces they left f
 
 All these years later, I got curious how many more words could be spelled with those letters. Thankfully it becomes a much easier question when you have access to a fast computer and a C compiler:
 
-`./word_search leprechaun /usr/share/dict/words`
+`./spellable leprechaun`
 
 And *that* is how you cheat at a game intended to distract impatient children.
 

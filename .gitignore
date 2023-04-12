@@ -2,7 +2,7 @@
 *.exe
 *.o
 *.swp
-anagram_search
+anagram
 is_spellable
 letter_pool
-word_search
+spellable
