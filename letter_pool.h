@@ -57,9 +57,9 @@ void pool_subtract(unsigned int *pool, const char *letters);
 
 /*
  * Returns whether there are enough letters in the pool to spell
- * the specified word.
+ * the specified word or phrase. Spaces and punctuation are ignored.
  */
-bool pool_can_spell(unsigned int *pool, const char *word);
+bool pool_can_spell(unsigned int *pool, const char *phrase);
 
 /*
  * Reset a pool's letter count to zero.

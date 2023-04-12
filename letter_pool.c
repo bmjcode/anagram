@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <ctype.h>
 #include <stdio.h>
 
 #include "letter_pool.h"
@@ -46,23 +47,26 @@ pool_subtract(unsigned int *pool, const char *letters)
 }
 
 bool
-pool_can_spell(unsigned int *pool, const char *word)
+pool_can_spell(unsigned int *pool, const char *phrase)
 {
+    const char *c;
     size_t pos;
     unsigned int letter_count[POOL_SIZE];
 
-    if ((pool == NULL) || (word == NULL))
+    if ((pool == NULL) || (phrase == NULL))
         return false;
 
     pool_reset(letter_count);
-    while (*word != '\0') {
-        if (pool_in_alphabet(*word)) {
-            pos = *word - POOL_START;
+
+    c = phrase;
+    while (*c != '\0') {
+        if (pool_in_alphabet(*c)) {
+            pos = *c - POOL_START;
             if (++letter_count[pos] > pool[pos])
                 return false;
-        } else
+        } else if (!(ispunct(*c) || isspace(*c)))
             return false;
-        ++word;
+        ++c;
     }
     return true;
 }
