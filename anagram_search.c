@@ -1,5 +1,5 @@
 /*
- * Find anagrams of a given word.
+ * Find anagrams of a given word or phrase.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -16,12 +16,12 @@
  */
 
 /*
- * Usage: ./anagram_search word /path/to/word/list
+ * Usage: ./anagram_search phrase /path/to/phrase/list
  *
  * For example, to find anagrams of the word "leprechaun", you could try:
  * ./anagram_search leprechaun /usr/share/dict/words
  *
- * The formatting of the word list is one word per line, case-sensitive.
+ * The formatting of the phrase list is one per line, case-sensitive.
  * Found anagrams are printed to stdout.
  */
 
@@ -30,14 +30,14 @@
 #include <string.h>
 
 #include "letter_pool.h"
-#include "word_list.h"
+#include "phrase_list.h"
 
 /*
  * Structure representing the state of make_sentence().
  */
 struct sentence_info {
-    struct word_list *word_list;
-    size_t word_count;
+    struct phrase_list *phrase_list;
+    size_t phrase_count;
     unsigned int *pool;
     char *sentence;
     size_t length;
@@ -49,8 +49,8 @@ struct sentence_info {
 static void sentence_info_init(struct sentence_info *si);
 
 /*
- * Make a "sentence" using words formed from letters in the pool.
- * For our purposes a sentence is any combination of one or more words
+ * Make a "sentence" using phrases formed from letters in the pool.
+ * For our purposes a sentence is any combination of one or more phrases
  * separated by spaces.
  */
 static void make_sentence(struct sentence_info *si);
@@ -61,8 +61,8 @@ sentence_info_init(struct sentence_info *si)
     if (si == NULL)
         return;
 
-    si->word_list = NULL;
-    si->word_count = 0;
+    si->phrase_list = NULL;
+    si->phrase_count = 0;
     si->pool = NULL;
     si->sentence = NULL;
     si->length = 0;
@@ -71,9 +71,9 @@ sentence_info_init(struct sentence_info *si)
 void
 make_sentence(struct sentence_info *si)
 {
-    struct word_list *curr;
+    struct phrase_list *curr;
 
-    if ((si == NULL) || (si->word_list == NULL) || (si->pool == NULL))
+    if ((si == NULL) || (si->phrase_list == NULL) || (si->pool == NULL))
         return;
 
     if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
@@ -82,18 +82,18 @@ make_sentence(struct sentence_info *si)
         return;
     }
 
-    for (curr = si->word_list; curr != NULL; curr = curr->next) {
+    for (curr = si->phrase_list; curr != NULL; curr = curr->next) {
         struct sentence_info nsi;
-        char *n, *w;
+        char *n, *p;
 
-        if (curr->word == NULL)
+        if (curr->phrase == NULL)
             break; /* best to assume something's really gone wrong here */
 
-        if (!pool_can_spell(si->pool, curr->word))
+        if (!pool_can_spell(si->pool, curr->phrase))
             continue;
 
         sentence_info_init(&nsi);
-        nsi.word_list = si->word_list;
+        nsi.phrase_list = si->phrase_list;
         nsi.pool = si->pool;
 
         if (si->sentence == NULL)
@@ -109,26 +109,25 @@ make_sentence(struct sentence_info *si)
         /* This isn't overflow-safe but neither is anything else here */
         n = nsi.sentence;
         if (si->sentence != NULL) {
-            char *p;
             p = si->sentence;
             while (*p != '\0')
                 *n++ = *p++;
             *n++ = ' ';
         }
-        w = curr->word;
-        while (*w != '\0')
-            *n++ = *w++;
+        p = curr->phrase;
+        while (*p != '\0')
+            *n++ = *p++;
         *n = '\0';
 
-        /* Remove this word's letters from the pool */
-        pool_subtract(si->pool, curr->word);
+        /* Remove this phrase's letters from the pool */
+        pool_subtract(si->pool, curr->phrase);
 
         /* Extend the sentence with our new phrase */
         make_sentence(&nsi);
         free(nsi.sentence);
 
         /* Restore the pool for the next cycle */
-        pool_add(si->pool, curr->word);
+        pool_add(si->pool, curr->phrase);
     }
 }
 
@@ -146,7 +145,7 @@ main(int argc, char **argv)
     pool_reset(pool);
     if (argc < 3) {
         fprintf(stderr,
-                "Usage: %s alphabet /path/to/word/list\n",
+                "Usage: %s alphabet /path/to/phrase/list\n",
                 argv[0]);
         return 1;
     }
@@ -163,11 +162,11 @@ main(int argc, char **argv)
         return 1;
     }
 
-    si.word_list = word_list_read(NULL, fp, &si.word_count);
+    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count);
     fclose(fp);
-    if (si.word_list == NULL) {
+    if (si.phrase_list == NULL) {
         fprintf(stderr,
-                "Failed to read word list: %s\n",
+                "Failed to read phrase list: %s\n",
                 list_path);
         return 1;
     }
@@ -175,6 +174,6 @@ main(int argc, char **argv)
     /* Search for valid sentences */
     make_sentence(&si);
 
-    word_list_free(si.word_list);
+    phrase_list_free(si.phrase_list);
     return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Functions for working with an in-memory word list.
+ * Functions for working with an in-memory phrase list.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -20,37 +20,37 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "word_list.h"
+#include "phrase_list.h"
 
-struct word_list *
-word_list_add(struct word_list *prev, const char *word, size_t *count)
+struct phrase_list *
+phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
 {
-    struct word_list *next;
+    struct phrase_list *next;
     const char *c;
 
-    next = malloc(sizeof(struct word_list));
+    next = malloc(sizeof(struct phrase_list));
     if (next == NULL)
         return NULL;
 
     next->length = 0;
     next->next = NULL;
 
-    /* Copy the word into our own memory */
-    for (c = word; !((*c == '\0') || (*c == '\n')); ++c)
+    /* Copy the phrase into our own memory */
+    for (c = phrase; !((*c == '\0') || (*c == '\n')); ++c)
         ++next->length;
 
-    next->word = malloc((next->length + 1) * sizeof(char));
-    if (next->word == NULL) {
+    next->phrase = malloc((next->length + 1) * sizeof(char));
+    if (next->phrase == NULL) {
         free(next);
         return NULL;
     }
 
-    if (strncpy(next->word, word, next->length) == NULL) {
-        free(next->word);
+    if (strncpy(next->phrase, phrase, next->length) == NULL) {
+        free(next->phrase);
         free(next);
         return NULL;
     }
-    next->word[next->length] = '\0';
+    next->phrase[next->length] = '\0';
 
     if (prev != NULL)
         prev->next = next;
@@ -62,14 +62,14 @@ word_list_add(struct word_list *prev, const char *word, size_t *count)
 }
 
 void
-word_list_free(struct word_list *first)
+phrase_list_free(struct phrase_list *first)
 {
-    struct word_list *curr, *next;
+    struct phrase_list *curr, *next;
 
     curr = first;
     while (curr != NULL) {
-        if (curr->word != NULL)
-            free(curr->word);
+        if (curr->phrase != NULL)
+            free(curr->phrase);
 
         next = curr->next;
         free(curr);
@@ -77,23 +77,23 @@ word_list_free(struct word_list *first)
     }
 }
 
-struct word_list *
-word_list_read(struct word_list *prev, FILE *fp, size_t *count)
+struct phrase_list *
+phrase_list_read(struct phrase_list *prev, FILE *fp, size_t *count)
 {
-    struct word_list *head, *curr;
+    struct phrase_list *head, *curr;
     char buf[64]; /* that should be long enough for most words */
 
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
-        curr = word_list_add(prev, buf, count);
+        curr = phrase_list_add(prev, buf, count);
         if (curr == NULL) {
             if (head != NULL)
-                word_list_free(head);
+                phrase_list_free(head);
             return NULL;
         } else
             prev = curr;
 
-        /* Save a pointer to the first word */
+        /* Save a pointer to the first phrase */
         if (head == NULL)
             head = curr;
     }

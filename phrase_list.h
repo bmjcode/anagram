@@ -1,5 +1,5 @@
 /*
- * Functions for working with an in-memory word list.
+ * Functions for working with an in-memory phrase list.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -15,48 +15,53 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef WORD_LIST_H
-#define WORD_LIST_H
+/*
+ * For our purposes a "phrase" is any combination of one or more words
+ * joined by spaces and/or punctuation.
+ */
+
+#ifndef PHRASE_LIST_H
+#define PHRASE_LIST_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-struct word_list {
-    char *word;
+struct phrase_list {
+    char *phrase;
     size_t length;
-    struct word_list *next;
+    struct phrase_list *next;
 };
 
 
 /*
- * Add a word to the list.
+ * Add a phrase to the list.
  *
  * If prev is NULL, this starts a new list.
- * Returns a pointer to the newly added word.
+ * Returns a pointer to the newly added phrase.
  */
-struct word_list *word_list_add(struct word_list *prev,
-				const char *word, size_t *count);
+struct phrase_list *phrase_list_add(struct phrase_list *prev,
+                                    const char *phrase, size_t *count);
 
 /*
- * Free memory used by a word list.
+ * Free memory used by a phrase list.
  */
-void word_list_free(struct word_list *first);
+void phrase_list_free(struct phrase_list *first);
 
 /*
- * Read a word list from a file.
+ * Read a phrase list from a file.
  *
  * The file pointed to by 'fp' should be opened in mode "r".
  * Returns a pointer to the first item in the list.
  */
-struct word_list *word_list_read(struct word_list *prev,
-                                 FILE *fp,
-                                 size_t *count);
+struct phrase_list *phrase_list_read(struct phrase_list *prev,
+                                     FILE *fp,
+                                     size_t *count);
 
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
 
-#endif /* WORD_LIST_H */
+#endif /* PHRASE_LIST_H */
