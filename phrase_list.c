@@ -35,17 +35,17 @@ phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
     next->length = 0;
     next->next = NULL;
 
-    /* Copy the phrase into our own memory */
+    /* To avoid excessive linear-time operations we can combine
+     * length calculation and newline removal then cache the result */
     for (c = phrase; !((*c == '\0') || (*c == '\n')); ++c)
         ++next->length;
 
+    /* Copy the phrase into our own memory */
     next->phrase = malloc((next->length + 1) * sizeof(char));
     if (next->phrase == NULL) {
         free(next);
         return NULL;
-    }
-
-    if (strncpy(next->phrase, phrase, next->length) == NULL) {
+    } else if (strncpy(next->phrase, phrase, next->length) == NULL) {
         free(next->phrase);
         free(next);
         return NULL;
