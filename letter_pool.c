@@ -27,7 +27,7 @@ pool_add(unsigned int *pool, const char *letters)
 
     while (*letters != '\0') {
         if (pool_in_alphabet(*letters))
-            ++pool[(int)(*letters - POOL_START)];
+            ++pool[*letters - POOL_START];
         ++letters;
     }
 }
@@ -40,7 +40,7 @@ pool_subtract(unsigned int *pool, const char *letters)
 
     while (*letters != '\0') {
         if (pool_in_alphabet(*letters))
-            --pool[(int)(*letters - POOL_START)];
+            --pool[*letters - POOL_START];
         ++letters;
     }
 }
@@ -48,7 +48,7 @@ pool_subtract(unsigned int *pool, const char *letters)
 bool
 pool_can_spell(unsigned int *pool, const char *word)
 {
-    int pos;
+    size_t pos;
     unsigned int letter_count[POOL_SIZE];
 
     if ((pool == NULL) || (word == NULL))
@@ -57,7 +57,7 @@ pool_can_spell(unsigned int *pool, const char *word)
     pool_reset(letter_count);
     while (*word != '\0') {
         if (pool_in_alphabet(*word)) {
-            pos = (int)(*word - POOL_START);
+            pos = *word - POOL_START;
             if (++letter_count[pos] > pool[pos])
                 return false;
         } else
@@ -70,7 +70,7 @@ pool_can_spell(unsigned int *pool, const char *word)
 void
 pool_reset(unsigned int *pool)
 {
-    int i;
+    size_t i;
 
     if (pool == NULL)
         return;
@@ -82,7 +82,7 @@ pool_reset(unsigned int *pool)
 bool
 pool_is_empty(unsigned int *pool)
 {
-    int i;
+    size_t i;
 
     if (pool == NULL)
         return false; /* vacuous since there is no pool */
@@ -97,7 +97,7 @@ pool_is_empty(unsigned int *pool)
 void
 pool_copy(unsigned int *src, unsigned int *dst)
 {
-    int i;
+    size_t i;
 
     if ((src == NULL) || (dst == NULL))
         return;
@@ -109,7 +109,7 @@ pool_copy(unsigned int *src, unsigned int *dst)
 void
 pool_print(unsigned int *pool)
 {
-    int i = 0;
+    size_t i = 0;
 
     if (pool == NULL)
         return;

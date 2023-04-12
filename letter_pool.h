@@ -40,7 +40,7 @@ extern "C" {
  * Return whether there is at least one of 'letter' in the pool.
  */
 #define pool_contains(pool, letter) \
-        ((pool)[(int)((letter) - POOL_START)] >= 1)
+        ((pool)[(letter) - POOL_START] >= 1)
 
 /*
  * Add alphabetic characters in 'letters' to the pool.
