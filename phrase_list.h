@@ -23,17 +23,11 @@
 #ifndef PHRASE_LIST_H
 #define PHRASE_LIST_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 struct phrase_list {
     char *phrase;
     size_t length;
     struct phrase_list *next;
 };
-
 
 /*
  * Add a phrase to the list.
@@ -58,10 +52,5 @@ void phrase_list_free(struct phrase_list *first);
 struct phrase_list *phrase_list_read(struct phrase_list *prev,
                                      FILE *fp,
                                      size_t *count);
-
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
 #endif /* PHRASE_LIST_H */

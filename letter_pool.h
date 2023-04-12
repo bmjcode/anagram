@@ -18,11 +18,6 @@
 #ifndef LETTER_POOL_H
 #define LETTER_POOL_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
 #include <stdbool.h>
 
 /* This assumes the alphabet is encoded in one contiguous block */
@@ -85,10 +80,5 @@ void pool_copy(unsigned int *src, unsigned int *dst);
  * Print the contents of the pool to stdout. Intended for debugging.
  */
 void pool_print(unsigned int *pool);
-
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
 #endif /* LETTER_POOL_H */
