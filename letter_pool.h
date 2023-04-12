@@ -26,9 +26,9 @@ extern "C" {
 #include <stdbool.h>
 
 /* This assumes the alphabet is encoded in one contiguous block */
-#define POOL_SIZE  26
-#define POOL_START 'a'
+#define POOL_START 'A'
 #define POOL_STOP  'z'
+#define POOL_SIZE  (POOL_STOP - POOL_START)
 
 /*
  * Return whether 'letter' is part of the pool's alphabet.
