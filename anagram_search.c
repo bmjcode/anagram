@@ -1,5 +1,5 @@
 /*
- * Find anagrams of a given word or phrase.
+ * Find anagrams of a word or phrase.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -28,44 +28,81 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "letter_pool.h"
 #include "phrase_list.h"
 #include "sentence.h"
+
+static void usage(FILE *stream, char *prog_name);
+
+void
+usage(FILE *stream, char *prog_name)
+{
+    fprintf(stream,
+            "Find anagrams of a word or phrase.\n"
+            "Usage: %s [-h] [-l PATH] subject\n"
+            "  -h       Display this help message and exit\n"
+            "  -l PATH  Override the default phrase list\n",
+            prog_name);
+}
 
 int
 main(int argc, char **argv)
 {
     FILE *fp;
     struct sentence_info si;
-    char *letters, *list_path;
+    char *list_path;
     unsigned int pool[POOL_SIZE];
+    int i, opt;
 
+    pool_reset(pool);
     sentence_info_init(&si);
     si.pool = pool;
 
-    pool_reset(pool);
-    if (argc < 3) {
-        fprintf(stderr,
-                "Usage: %s alphabet /path/to/phrase/list\n",
-                argv[0]);
-        return 1;
+    list_path = NULL;
+    while ((opt = getopt(argc, argv, "hl:")) != -1) {
+        switch (opt) {
+            case 'h':
+                /* Display help and exit */
+                usage(stdout, argv[0]);
+                return 0;
+            case 'l':
+                /* Override the default phrase list */
+                list_path = optarg;
+                break;
+        }
     }
 
-    letters = argv[1];
-    pool_add(pool, letters);
+    /* The remaining command-line arguments specify the subject */
+    if (optind >= argc) {
+        usage(stderr, argv[0]);
+        return 1;
+    }
+    for (i = optind; i < argc; ++i)
+        pool_add(pool, argv[i]);
 
-    list_path = argv[2];
-    fp = fopen(list_path, "r");
-    if (fp == NULL) {
+    /* Prefer our included phrase list if none is specified */
+    /* FIXME: This is not a safe way to locate this file */
+    if (list_path == NULL) {
+        if (access("web2.txt", R_OK) == 0)
+            list_path = "web2.txt";
+#ifdef __unix__
+        else if (access("/usr/share/dict/words", R_OK) == 0)
+            list_path = "/usr/share/dict/words";
+#endif
+    }
+
+    if ((fp = fopen(list_path, "r")) == NULL) {
         fprintf(stderr,
                 "Failed to open: %s\n",
                 list_path);
         return 1;
+    } else {
+        si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count);
+        fclose(fp);
     }
 
-    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count);
-    fclose(fp);
     if (si.phrase_list == NULL) {
         fprintf(stderr,
                 "Failed to read phrase list: %s\n",
