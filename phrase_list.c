@@ -79,13 +79,19 @@ phrase_list_free(struct phrase_list *first)
 }
 
 struct phrase_list *
-phrase_list_read(struct phrase_list *prev, FILE *fp, size_t *count)
+phrase_list_read(struct phrase_list *prev,
+                 FILE *fp,
+                 size_t *count,
+                 pool_t *letter_pool)
 {
     struct phrase_list *head, *curr;
     char buf[64]; /* that should be long enough for most words */
 
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
+        if (!((letter_pool == NULL)
+              || (pool_can_spell(letter_pool, buf))))
+            continue;
         curr = phrase_list_add(prev, buf, count);
         if (curr == NULL) {
             if (head != NULL)

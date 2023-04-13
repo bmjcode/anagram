@@ -82,7 +82,7 @@ main(int argc, char **argv)
                 list_path);
         return 1;
     } else {
-        si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count);
+        si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, pool);
         fclose(fp);
     }
 

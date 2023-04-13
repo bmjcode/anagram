@@ -23,6 +23,9 @@
 #ifndef PHRASE_LIST_H
 #define PHRASE_LIST_H
 
+/* For pool_t */
+#include "letter_pool.h"
+
 /* Path to our default phrase list */
 #define PHRASE_LIST_DEFAULT "web2.txt"
 #ifdef __unix__ /* this isn't reliably available on other platforms */
@@ -57,7 +60,8 @@ void phrase_list_free(struct phrase_list *first);
  */
 struct phrase_list *phrase_list_read(struct phrase_list *prev,
                                      FILE *fp,
-                                     size_t *count);
+                                     size_t *count,
+                                     pool_t *letter_pool);
 
 /*
  * Return the path to our default phrase list.
