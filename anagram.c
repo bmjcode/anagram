@@ -53,7 +53,7 @@ main(int argc, char **argv)
     FILE *fp;
     struct sentence_info si;
     char *list_path;
-    unsigned int pool[POOL_SIZE];
+    pool_t pool[POOL_SIZE];
     int i, opt;
 
     pool_reset(pool);

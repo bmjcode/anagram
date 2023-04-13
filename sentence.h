@@ -44,7 +44,7 @@ typedef void (*sentence_done_cb)(struct sentence_info *si);
 struct sentence_info {
     struct phrase_list *phrase_list;
     size_t phrase_count;
-    unsigned int *pool;
+    pool_t *pool;
     char *sentence;
     size_t length;
 

@@ -30,7 +30,7 @@ main(int argc, char **argv)
 {
     int i;
     char *letters, *word;
-    unsigned int pool[POOL_SIZE];
+    pool_t pool[POOL_SIZE];
 
     pool_reset(pool);
     if (argc < 3) {

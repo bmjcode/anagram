@@ -20,6 +20,8 @@
 
 #include <stdbool.h>
 
+typedef size_t pool_t;
+
 /* This assumes the alphabet is encoded in one contiguous block */
 #define POOL_START 'A'
 #define POOL_STOP  'z'
@@ -40,7 +42,7 @@
 /*
  * Add alphabetic characters in 'letters' to the pool.
  */
-void pool_add(unsigned int *pool, const char *letters);
+void pool_add(pool_t *pool, const char *letters);
 
 /*
  * Subtract alphabetic characters in 'letters' from the pool.
@@ -48,25 +50,25 @@ void pool_add(unsigned int *pool, const char *letters);
  * Use pool_can_spell() to make sure there are enough of each letter
  * in the pool before calling this.
  */
-void pool_subtract(unsigned int *pool, const char *letters);
+void pool_subtract(pool_t *pool, const char *letters);
 
 /*
  * Returns whether there are enough letters in the pool to spell
  * the specified word or phrase. Spaces and punctuation are ignored.
  */
-bool pool_can_spell(unsigned int *pool, const char *phrase);
+bool pool_can_spell(pool_t *pool, const char *phrase);
 
 /*
  * Reset a pool's letter count to zero.
  *
  * Always call this to initialize a new pool before adding letters.
  */
-void pool_reset(unsigned int *pool);
+void pool_reset(pool_t *pool);
 
 /*
  * Return whether the letter pool is empty (all counts are zero).
  */
-bool pool_is_empty(unsigned int *pool);
+bool pool_is_empty(pool_t *pool);
 
 /*
  * Make a copy of a letter pool.
@@ -74,11 +76,11 @@ bool pool_is_empty(unsigned int *pool);
  * This does not do any bounds checking. The caller is responsible
  * to ensure both src and dst are large enough to hold the pool.
  */
-void pool_copy(unsigned int *src, unsigned int *dst);
+void pool_copy(pool_t *src, pool_t *dst);
 
 /*
  * Print the contents of the pool to stdout. Intended for debugging.
  */
-void pool_print(unsigned int *pool);
+void pool_print(pool_t *pool);
 
 #endif /* LETTER_POOL_H */

@@ -52,7 +52,7 @@ main(int argc, char **argv)
     FILE *fp;
     char buf[64];
     char *list_path;
-    unsigned int pool[POOL_SIZE];
+    pool_t pool[POOL_SIZE];
     int i, opt;
 
     pool_reset(pool);

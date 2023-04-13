@@ -21,7 +21,7 @@
 #include "letter_pool.h"
 
 void
-pool_add(unsigned int *pool, const char *letters)
+pool_add(pool_t *pool, const char *letters)
 {
     if ((pool == NULL) || (letters == NULL))
         return;
@@ -34,7 +34,7 @@ pool_add(unsigned int *pool, const char *letters)
 }
 
 void
-pool_subtract(unsigned int *pool, const char *letters)
+pool_subtract(pool_t *pool, const char *letters)
 {
     if ((pool == NULL) || (letters == NULL))
         return;
@@ -47,11 +47,11 @@ pool_subtract(unsigned int *pool, const char *letters)
 }
 
 bool
-pool_can_spell(unsigned int *pool, const char *phrase)
+pool_can_spell(pool_t *pool, const char *phrase)
 {
     const char *c;
     size_t pos;
-    unsigned int letter_count[POOL_SIZE];
+    pool_t letter_count[POOL_SIZE];
 
     if ((pool == NULL) || (phrase == NULL))
         return false;
@@ -72,7 +72,7 @@ pool_can_spell(unsigned int *pool, const char *phrase)
 }
 
 void
-pool_reset(unsigned int *pool)
+pool_reset(pool_t *pool)
 {
     size_t i;
 
@@ -84,7 +84,7 @@ pool_reset(unsigned int *pool)
 }
 
 bool
-pool_is_empty(unsigned int *pool)
+pool_is_empty(pool_t *pool)
 {
     size_t i;
 
@@ -99,7 +99,7 @@ pool_is_empty(unsigned int *pool)
 }
 
 void
-pool_copy(unsigned int *src, unsigned int *dst)
+pool_copy(pool_t *src, pool_t *dst)
 {
     size_t i;
 
@@ -111,7 +111,7 @@ pool_copy(unsigned int *src, unsigned int *dst)
 }
 
 void
-pool_print(unsigned int *pool)
+pool_print(pool_t *pool)
 {
     size_t i = 0;
 
@@ -119,7 +119,7 @@ pool_print(unsigned int *pool)
         return;
 
     while (true) {
-        printf("'%c': %d",
+        printf("'%c': %zd",
                (char)i + POOL_START,
                pool[i]);
         if (++i == POOL_SIZE) {
@@ -136,7 +136,7 @@ main(int argc, char **argv)
 {
     const char *word = "isogram";
     bool can_spell;
-    unsigned int pool[POOL_SIZE];
+    pool_t pool[POOL_SIZE];
 
     /* Add one instance of each letter of the English alphabet */
     pool_reset(pool);
