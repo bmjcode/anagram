@@ -15,16 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Usage: ./anagram_search phrase /path/to/phrase/list
- *
- * For example, to find anagrams of the word "leprechaun", you could try:
- * ./anagram_search leprechaun /usr/share/dict/words
- *
- * The formatting of the phrase list is one per line, case-sensitive.
- * Found anagrams are printed to stdout.
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -15,17 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Usage: ./word_search alphabet /path/to/word/list
- *
- * For example, to find English language isograms (words spelled using
- * each of their letters exactly once), you could try:
- * ./word_search abcdefghijklmnopqrstuvwxyz /usr/share/dict/words
- *
- * The formatting of the word list is one word per line, case-sensitive.
- * Matching words are printed to stdout.
- */
-
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
