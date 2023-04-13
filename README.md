@@ -1,3 +1,5 @@
+This package contains an anagram finder and some other programs for constructing words from a restricted pool of letters.
+
 When I was growing up, a local restaurant had this puzzle on their kids' menu:
 
 *How many words can you spell using the letters in "leprechaun"?*
