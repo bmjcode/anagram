@@ -56,6 +56,9 @@ void phrase_list_free(struct phrase_list *first);
  * Read a phrase list from a file.
  *
  * The file pointed to by 'fp' should be opened in mode "r".
+ * The number of phrases is stored to 'count'.
+ * If 'letter_pool' is provided, only words spellable using the letters
+ * in the pool will be included in the list.
  * Returns a pointer to the first item in the list.
  */
 struct phrase_list *phrase_list_read(struct phrase_list *prev,
