@@ -17,11 +17,5 @@ spellable: spellable.o letter_pool.o phrase_list.o
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-# Test suite -- not intended for general consumption
-test: letter_pool
-	./letter_pool
-letter_pool: letter_pool.c
-	$(CC) $(CFLAGS) -DTEST_LETTER_POOL -o $@ $+ $(LDFLAGS)
-
 clean:
-	rm -f anagram is_spellable letter_pool spellable *.exe *.o
+	rm -f anagram is_spellable spellable *.exe *.o

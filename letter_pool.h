@@ -78,9 +78,4 @@ bool pool_is_empty(pool_t *pool);
  */
 void pool_copy(pool_t *src, pool_t *dst);
 
-/*
- * Print the contents of the pool to stdout. Intended for debugging.
- */
-void pool_print(pool_t *pool);
-
 #endif /* LETTER_POOL_H */
