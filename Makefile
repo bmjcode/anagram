@@ -11,7 +11,7 @@ anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 is_spellable: is_spellable.o letter_pool.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
-spellable: spellable.o letter_pool.o
+spellable: spellable.o letter_pool.o phrase_list.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
 %.o: %.c

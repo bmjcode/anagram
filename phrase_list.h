@@ -23,6 +23,12 @@
 #ifndef PHRASE_LIST_H
 #define PHRASE_LIST_H
 
+/* Path to our default phrase list */
+#define PHRASE_LIST_DEFAULT "web2.txt"
+#ifdef __unix__ /* this isn't reliably available on other platforms */
+#  define PHRASE_LIST_SYSTEM "/usr/share/dict/words"
+#endif
+
 struct phrase_list {
     char *phrase;
     size_t length;
@@ -52,5 +58,12 @@ void phrase_list_free(struct phrase_list *first);
 struct phrase_list *phrase_list_read(struct phrase_list *prev,
                                      FILE *fp,
                                      size_t *count);
+
+/*
+ * Return the path to our default phrase list.
+ *
+ * The return value is a static string. Don't free it!
+ */
+const char *phrase_list_default(void);
 
 #endif /* PHRASE_LIST_H */

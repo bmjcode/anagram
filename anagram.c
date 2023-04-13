@@ -42,7 +42,7 @@ main(int argc, char **argv)
 {
     FILE *fp;
     struct sentence_info si;
-    char *list_path;
+    const char *list_path;
     pool_t pool[POOL_SIZE];
     int i, opt;
 
@@ -72,16 +72,9 @@ main(int argc, char **argv)
     for (i = optind; i < argc; ++i)
         pool_add(pool, argv[i]);
 
-    /* Prefer our included phrase list if none is specified */
-    /* FIXME: This is not a safe way to locate this file */
-    if (list_path == NULL) {
-        if (access("web2.txt", R_OK) == 0)
-            list_path = "web2.txt";
-#ifdef __unix__
-        else if (access("/usr/share/dict/words", R_OK) == 0)
-            list_path = "/usr/share/dict/words";
-#endif
-    }
+    /* Fall back on our included phrase list if none is specified */
+    if (list_path == NULL)
+        list_path = phrase_list_default();
 
     if ((fp = fopen(list_path, "r")) == NULL) {
         fprintf(stderr,

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "phrase_list.h"
 
@@ -99,4 +100,18 @@ phrase_list_read(struct phrase_list *prev, FILE *fp, size_t *count)
     }
 
     return head;
+}
+
+const char *
+phrase_list_default(void)
+{
+    /* FIXME: There has to be a safer way to locate this file */
+    if (access("web2.txt", R_OK) == 0)
+        return "web2.txt";
+#ifdef __unix__
+    else if (access("/usr/share/dict/words", R_OK) == 0)
+        return "/usr/share/dict/words";
+#endif
+    else
+        return NULL;
 }
