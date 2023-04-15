@@ -45,8 +45,6 @@ sentence_build(struct sentence_info *si)
 
     if ((si == NULL) || (si->pool == NULL))
         return;
-    else if (!((si->check_cb == NULL) || si->check_cb(si)))
-        return;
 
     if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
         /* We've completed a sentence */
@@ -66,6 +64,9 @@ sentence_build(struct sentence_info *si)
             break; /* best to assume something's really gone wrong here */
 
         if (!pool_can_spell(si->pool, curr->phrase))
+            continue;
+        else if (!((si->check_cb == NULL)
+                   || si->check_cb(si, curr)))
             continue;
 
         /* Remove this phrase's letters from the pool */

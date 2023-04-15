@@ -30,7 +30,8 @@ struct sentence_info;
  * Return true to accept, false to reject.
  * If none is specified, all potential sentences are accepted.
  */
-typedef bool (*sentence_check_cb)(struct sentence_info *si);
+typedef bool (*sentence_check_cb)(struct sentence_info *si,
+                                  struct phrase_list *newest_phrase);
 
 /*
  * Callback function when a sentence is completed.
