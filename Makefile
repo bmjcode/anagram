@@ -2,8 +2,8 @@ CC ?= gcc
 CFLAGS ?= -O3 -fPIC -Wall -Werror
 LDFLAGS ?=
 
-DEFAULT = anagram is_spellable spellable
-all: anagram is_spellable spellable
+DEFAULT = anagram is_spellable spellable qwantzle
+all: anagram is_spellable spellable qwantzle
 
 anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -o $@ $+ $(LDFLAGS)
@@ -14,8 +14,11 @@ is_spellable: is_spellable.o letter_pool.o
 spellable: spellable.o letter_pool.o phrase_list.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
+qwantzle: qwantzle.o letter_pool.o phrase_list.o sentence.o
+	$(CC) -o $@ $+ $(LDFLAGS)
+
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 clean:
-	rm -f anagram is_spellable spellable *.exe *.o
+	rm -f anagram is_spellable spellable qwantzle *.exe *.o
