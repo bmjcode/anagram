@@ -2,6 +2,10 @@ CC ?= gcc
 CFLAGS ?= -O3 -fPIC -Wall -Werror
 LDFLAGS ?=
 
+# Enable threading
+CFLAGS += -DENABLE_THREADING -pthread
+LDFLAGS += -pthread
+
 DEFAULT = anagram is_spellable spellable qwantzle
 all: anagram is_spellable spellable qwantzle
 

@@ -54,6 +54,11 @@ struct sentence_info {
     sentence_check_cb check_cb;
     sentence_done_cb done_cb;
     void *user_data; /* user-specified arbitrary data */
+
+    /* Use these to divide the phrase list among multiple threads */
+    size_t step;    /* use every nth word */
+    size_t offset;  /* skip the first n words */
+    size_t limit;   /* stop after n words */
 };
 
 /*
@@ -67,5 +72,14 @@ void sentence_info_init(struct sentence_info *si);
  * separated by spaces.
  */
 void sentence_build(struct sentence_info *si);
+
+/*
+ * Divide sentence_build() across multiple threads.
+ *
+ * If your system does not support pthreads, this always starts a
+ * single thread.
+ */
+void sentence_build_threaded(struct sentence_info *si,
+                             unsigned short num_threads);
 
 #endif /* SENTENCE_H */

@@ -31,10 +31,11 @@ usage(FILE *stream, char *prog_name)
 {
     fprintf(stream,
             "Find anagrams of a word or phrase.\n"
-            "Usage: %s [-h] [-f] [-l PATH] subject\n"
+            "Usage: %s [-h] [-f] [-l PATH] [-t NUM] subject\n"
             "  -h       Display this help message and exit\n"
             "  -f       Filter mode (read phrase list from stdin)\n"
-            "  -l PATH  Override the default phrase list\n",
+            "  -l PATH  Override the default phrase list\n"
+            "  -t NUM   Start the specified number of threads (default: 1)\n",
             prog_name);
 }
 
@@ -46,6 +47,7 @@ main(int argc, char **argv)
     const char *list_path;
     pool_t pool[POOL_SIZE];
     int i, opt;
+    unsigned short num_threads;
 
     pool_reset(pool);
     sentence_info_init(&si);
@@ -53,10 +55,13 @@ main(int argc, char **argv)
 
     fp = NULL;
     list_path = NULL;
-    while ((opt = getopt(argc, argv, "hfl:")) != -1) {
+    num_threads = 1;
+
+    while ((opt = getopt(argc, argv, "hfl:t:")) != -1) {
         switch (opt) {
             case 'h':
                 /* Display help and exit */
+                (void)num_threads;
                 usage(stdout, argv[0]);
                 return 0;
             case 'f':
@@ -66,6 +71,10 @@ main(int argc, char **argv)
             case 'l':
                 /* Override the default phrase list */
                 list_path = optarg;
+                break;
+            case 't':
+                /* Set the number of threads */
+                num_threads = strtoul(optarg, NULL, 0);
                 break;
         }
     }
@@ -103,7 +112,7 @@ main(int argc, char **argv)
     }
 
     /* Search for valid sentences */
-    sentence_build(&si);
+    sentence_build_threaded(&si, num_threads);
 
     phrase_list_free(si.phrase_list);
     return 0;
