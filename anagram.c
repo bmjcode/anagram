@@ -72,19 +72,23 @@ main(int argc, char **argv)
     for (i = optind; i < argc; ++i)
         pool_add(pool, argv[i]);
 
-    /* Fall back on our included phrase list if none is specified */
+    fp = NULL;
     if (list_path == NULL)
         list_path = phrase_list_default();
+    else if (strcmp(list_path, "-") == 0)
+        fp = stdin;
 
-    if ((fp = fopen(list_path, "r")) == NULL) {
-        fprintf(stderr,
-                "Failed to open: %s\n",
-                list_path);
-        return 1;
-    } else {
-        si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, pool);
-        fclose(fp);
+    if (fp == NULL) {
+        fp = fopen(list_path, "r");
+        if (fp == NULL) {
+            fprintf(stderr,
+                    "Failed to open: %s\n",
+                    list_path);
+            return 1;
+        }
     }
+    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, pool);
+    fclose(fp);
 
     if (si.phrase_list == NULL) {
         fprintf(stderr,
