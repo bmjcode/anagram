@@ -99,8 +99,7 @@ phrase_list_read(struct phrase_list *prev,
 
         curr = phrase_list_add(prev, buf, count);
         if (curr == NULL) {
-            if (head != NULL)
-                phrase_list_free(head);
+            phrase_list_free(head);
             return NULL;
         } else
             prev = curr;
@@ -135,8 +134,7 @@ phrase_list_filter(struct phrase_list *orig, size_t *count, pool_t *pool)
 
         next = malloc(sizeof(struct phrase_list));
         if (next == NULL) {
-            if (head != NULL)
-                phrase_list_filter_free(head);
+            phrase_list_filter_free(head);
             return NULL;
         }
 
