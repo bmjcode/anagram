@@ -31,8 +31,9 @@ usage(FILE *stream, char *prog_name)
 {
     fprintf(stream,
             "Find anagrams of a word or phrase.\n"
-            "Usage: %s [-h] [-l PATH] subject\n"
+            "Usage: %s [-h] [-f] [-l PATH] subject\n"
             "  -h       Display this help message and exit\n"
+            "  -f       Filter mode (read phrase list from stdin)\n"
             "  -l PATH  Override the default phrase list\n",
             prog_name);
 }
@@ -50,13 +51,18 @@ main(int argc, char **argv)
     sentence_info_init(&si);
     si.pool = pool;
 
+    fp = NULL;
     list_path = NULL;
-    while ((opt = getopt(argc, argv, "hl:")) != -1) {
+    while ((opt = getopt(argc, argv, "hfl:")) != -1) {
         switch (opt) {
             case 'h':
                 /* Display help and exit */
                 usage(stdout, argv[0]);
                 return 0;
+            case 'f':
+                /* Filter mode */
+                fp = stdin;
+                break;
             case 'l':
                 /* Override the default phrase list */
                 list_path = optarg;
@@ -72,7 +78,6 @@ main(int argc, char **argv)
     for (i = optind; i < argc; ++i)
         pool_add(pool, argv[i]);
 
-    fp = NULL;
     if (list_path == NULL)
         list_path = phrase_list_default();
     else if (strcmp(list_path, "-") == 0)
