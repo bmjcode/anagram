@@ -29,6 +29,10 @@ phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
     struct phrase_list *next;
     const char *c;
 
+    if ((phrase == NULL)
+        || !pool_in_alphabet(phrase[0]))
+        return NULL;
+
     next = malloc(sizeof(struct phrase_list));
     if (next == NULL)
         return NULL;
@@ -92,6 +96,7 @@ phrase_list_read(struct phrase_list *prev,
         if (!((letter_pool == NULL)
               || (pool_can_spell(letter_pool, buf))))
             continue;
+
         curr = phrase_list_add(prev, buf, count);
         if (curr == NULL) {
             if (head != NULL)
