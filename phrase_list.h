@@ -56,7 +56,7 @@ void phrase_list_free(struct phrase_list *first);
  * Read a phrase list from a file.
  *
  * The file pointed to by 'fp' should be opened in mode "r".
- * The number of phrases is stored to 'count'.
+ * The number of phrases is stored in 'count'.
  * If 'letter_pool' is provided, only words spellable using the letters
  * in the pool will be included in the list.
  * Returns a pointer to the first item in the list.
@@ -65,6 +65,22 @@ struct phrase_list *phrase_list_read(struct phrase_list *prev,
                                      FILE *fp,
                                      size_t *count,
                                      pool_t *letter_pool);
+
+/*
+ * Return the subset of a phrase list spellable with the specified letters.
+ *
+ * The number of phrases is stored in 'count'.
+ * Beware that the filtered list shares memory with the original, so don't
+ * free the original until you are done with the filtered version.
+ */
+struct phrase_list *phrase_list_filter(struct phrase_list *orig,
+                                       size_t *count,
+                                       pool_t *letter_pool);
+
+/*
+ * Free memory used by a filtered phrase list.
+ */
+void phrase_list_filter_free(struct phrase_list *first);
 
 /*
  * Return the path to our default phrase list.

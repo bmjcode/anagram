@@ -42,7 +42,7 @@ sentence_build(struct sentence_info *si)
 {
     struct phrase_list *curr;
 
-    if ((si == NULL) || (si->phrase_list == NULL) || (si->pool == NULL))
+    if ((si == NULL) || (si->pool == NULL))
         return;
     else if (!((si->check_cb == NULL) || si->check_cb(si)))
         return;
@@ -54,7 +54,8 @@ sentence_build(struct sentence_info *si)
         else
             si->done_cb(si);
         return;
-    }
+    } else if (si->phrase_list == NULL)
+        return;
 
     for (curr = si->phrase_list; curr != NULL; curr = curr->next) {
         struct sentence_info nsi;
@@ -66,12 +67,22 @@ sentence_build(struct sentence_info *si)
         if (!pool_can_spell(si->pool, curr->phrase))
             continue;
 
+        /* Remove this phrase's letters from the pool */
+        pool_subtract(si->pool, curr->phrase);
+
         sentence_info_init(&nsi);
-        nsi.phrase_list = si->phrase_list;
         nsi.pool = si->pool;
         nsi.check_cb = si->check_cb;
         nsi.done_cb = si->done_cb;
         nsi.user_data = si->user_data;
+
+        /* Remove words we can no longer spell from the phrase list.
+         * Note a NULL value here can mean success (we've used all the
+         * letters in the pool) or failure (the memory allocation failed).
+         * We will determine which it is on the next recursive call. */
+        nsi.phrase_list = phrase_list_filter(si->phrase_list,
+                                             &nsi.phrase_count,
+                                             nsi.pool);
 
         if (si->sentence == NULL)
             nsi.length = curr->length;
@@ -96,12 +107,10 @@ sentence_build(struct sentence_info *si)
             *n++ = *p++;
         *n = '\0';
 
-        /* Remove this phrase's letters from the pool */
-        pool_subtract(si->pool, curr->phrase);
-
         /* Extend the sentence with our new phrase */
         sentence_build(&nsi);
         free(nsi.sentence);
+        phrase_list_filter_free(nsi.phrase_list);
 
         /* Restore the pool for the next cycle */
         pool_add(si->pool, curr->phrase);
