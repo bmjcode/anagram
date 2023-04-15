@@ -17,6 +17,7 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "letter_pool.h"
 
