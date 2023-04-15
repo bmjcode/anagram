@@ -31,6 +31,7 @@ sentence_info_init(struct sentence_info *si)
     si->pool = NULL;
     si->sentence = NULL;
     si->length = 0;
+    si->depth = 0;
 
     si->check_cb = NULL;
     si->done_cb = NULL;
@@ -72,6 +73,7 @@ sentence_build(struct sentence_info *si)
 
         sentence_info_init(&nsi);
         nsi.pool = si->pool;
+        nsi.depth = si->depth;
         nsi.check_cb = si->check_cb;
         nsi.done_cb = si->done_cb;
         nsi.user_data = si->user_data;

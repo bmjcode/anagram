@@ -47,6 +47,7 @@ struct sentence_info {
     pool_t *pool;
     char *sentence;
     size_t length;
+    size_t depth; /* how many recursive calls deep we are */
 
     /* Callback functions */
     sentence_check_cb check_cb;
