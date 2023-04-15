@@ -74,7 +74,7 @@ sentence_build(struct sentence_info *si)
 
         sentence_info_init(&nsi);
         nsi.pool = si->pool;
-        nsi.depth = si->depth;
+        nsi.depth = si->depth + 1;
         nsi.check_cb = si->check_cb;
         nsi.done_cb = si->done_cb;
         nsi.user_data = si->user_data;
