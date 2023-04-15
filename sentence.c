@@ -47,7 +47,7 @@ sentence_build(struct sentence_info *si)
         return;
 
     if (pool_is_empty(si->pool) && (si->sentence != NULL)) {
-        /* We've completed a sentence */
+        /* We've completed a sentence! */
         if (si->done_cb == NULL)
             printf("%s\n", si->sentence);
         else
@@ -63,14 +63,13 @@ sentence_build(struct sentence_info *si)
         if (curr->phrase == NULL)
             break; /* best to assume something's really gone wrong here */
 
+        /* Skip phrases that we can't spell with our letter pool
+         * or that don't pass our validation check. */
         if (!pool_can_spell(si->pool, curr->phrase))
             continue;
         else if (!((si->check_cb == NULL)
                    || si->check_cb(si, curr)))
             continue;
-
-        /* Remove this phrase's letters from the pool */
-        pool_subtract(si->pool, curr->phrase);
 
         sentence_info_init(&nsi);
         nsi.pool = si->pool;
@@ -79,7 +78,10 @@ sentence_build(struct sentence_info *si)
         nsi.done_cb = si->done_cb;
         nsi.user_data = si->user_data;
 
-        /* Remove words we can no longer spell from the phrase list.
+        /* Remove this phrase's letters from the pool. */
+        pool_subtract(nsi.pool, curr->phrase);
+
+        /* Remove phrases we can no longer spell from the list.
          * Note a NULL value here can mean success (we've used all the
          * letters in the pool) or failure (the memory allocation failed).
          * We will determine which it is on the next recursive call. */
@@ -87,6 +89,12 @@ sentence_build(struct sentence_info *si)
                                              &nsi.phrase_count,
                                              nsi.pool);
 
+        /* Add this phrase to our sentence.
+         * Copying bytes manually is more efficient than using the standard
+         * library functions, whose execution time grows proportionally with
+         * the length of the destination string. We can safely assume this
+         * won't overflow because something else would have already overflowed
+         * long before we got here. */
         if (si->sentence == NULL)
             nsi.length = curr->length;
         else
@@ -96,8 +104,6 @@ sentence_build(struct sentence_info *si)
         if (nsi.sentence == NULL)
             break;
 
-        /* Inlining this avoids strcat()'s excessive seeking */
-        /* This isn't overflow-safe but neither is anything else here */
         n = nsi.sentence;
         if (si->sentence != NULL) {
             p = si->sentence;
@@ -110,12 +116,12 @@ sentence_build(struct sentence_info *si)
             *n++ = *p++;
         *n = '\0';
 
-        /* Extend the sentence with our new phrase */
+        /* Call this function recursively to process the extended sentence. */
         sentence_build(&nsi);
         free(nsi.sentence);
         phrase_list_filter_free(nsi.phrase_list);
 
-        /* Restore the pool for the next cycle */
-        pool_add(si->pool, curr->phrase);
+        /* Restore used letters to the pool for the next cycle. */
+        pool_add(nsi.pool, curr->phrase);
     }
 }
