@@ -79,10 +79,11 @@ sentence_build(struct sentence_info *si)
     if (phrases == NULL)
         return; /* this may be a problem */
 
-    /* Flatten the phrase list into an array of char* pointers
-     * with a terminating NULL pointer. This reduces the number
-     * of (slow) memory allocations needed to filter the list
-     * each time we recurse through the inner loop. */
+    /* Flatten the phrase list into an array of char* pointers with a
+     * terminating NULL pointer. This is a more practical working format
+     * than the original linked list since it requires only one (slow)
+     * memory allocation to construct a duplicate, as we do when we filter
+     * our working list in sentence_build_inner(). */
     for (lp = si->phrase_list, dst = phrases;
          lp != NULL;
          lp = lp->next, ++dst) {
