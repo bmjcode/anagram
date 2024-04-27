@@ -29,7 +29,7 @@
 static void sentence_build_inner(struct sentence_info *si,
                                  char *write_pos,
                                  char **prev_phrases,
-                                 size_t prev_phrase_count,
+                                 size_t phrase_count,
                                  size_t depth);
 #ifdef ENABLE_THREADING
 /* Wrapper to call sentence_build() in a thread */
@@ -59,6 +59,10 @@ sentence_info_init(struct sentence_info *si, pool_t *pool)
 void
 sentence_build(struct sentence_info *si)
 {
+    struct phrase_list *lp; /* list pointer */
+    char **phrases, **dst;
+    size_t phrase_count;
+
     if ((si == NULL) || (si->pool == NULL))
         return;
 
@@ -70,70 +74,73 @@ sentence_build(struct sentence_info *si)
         return; /* this could be a problem */
     memset(si->sentence, 0, si->max_length * sizeof(char));
 
-    sentence_build_inner(si, NULL, NULL, 0, 0);
+    phrase_count = 0;
+    phrases = malloc((si->phrase_count + 1) * sizeof(char*));
+    if (phrases == NULL)
+        return; /* this may be a problem */
+
+    /* Flatten the phrase list into an array of char* pointers
+     * with a terminating NULL pointer. This reduces the number
+     * of (slow) memory allocations needed to filter the list
+     * each time we recurse through the inner loop. */
+    for (lp = si->phrase_list, dst = phrases;
+         lp != NULL;
+         lp = lp->next, ++dst) {
+        *dst = lp->phrase;
+        ++phrase_count;
+    }
+    *dst = NULL;
+
+    sentence_build_inner(si, NULL, phrases, phrase_count, 0);
     free(si->sentence);
+    free(phrases);
 }
 
 void sentence_build_inner(struct sentence_info *si,
                           char *write_pos,
                           char **prev_phrases,
-                          size_t prev_phrase_count,
+                          size_t phrase_count,
                           size_t depth)
 {
-    char **phrases, **curr, *n, *p;
-    size_t i, phrase_count;
+    char **phrases, **prev, **curr, *n, *p;
+    size_t i;
 
-    if ((si == NULL) || (si->pool == NULL) || (si->phrase_list == NULL))
+    if ((si == NULL)
+        || (si->pool == NULL)
+        || (prev_phrases == NULL)
+        || (phrase_count == 0))
         return;
+
+    /* Add the next word starting at this position in si->sentence. */
+    if (write_pos == NULL)
+        write_pos = si->sentence;
+
+    /* Allocate enough memory to hold the previous phrase list.
+     * If the new list is smaller this wastes a few bytes, but it saves
+     * us (more valuable) time compared to iterating through twice to get
+     * an exact count. Remember also this is a brute-force algorithm, so
+     * memory is going to be cheap on anything that runs it tolerably fast. */
+    phrases = malloc((phrase_count + 1) * sizeof(char*));
+    if (phrases == NULL)
+        return; /* again, this may be a problem */
 
     /* Build a working list of phrases we can spell using letters in the
      * current pool. */
-    phrase_count = 0;
-    if ((prev_phrases == NULL) || (prev_phrase_count == 0)) {
-        struct phrase_list *lp; /* list pointer */
-
-        /* Flatten the phrase list into an array of char* pointers
-         * with a terminating NULL pointer. */
-        phrases = malloc((si->phrase_count + 1) * sizeof(char*));
-        if (phrases == NULL)
-            return; /* this may be a problem */
-
-        lp = si->phrase_list;
-        curr = phrases;
-        for (lp = si->phrase_list; lp != NULL; lp = lp->next) {
-            if (!pool_can_spell(si->pool, lp->phrase))
-                continue; /* skip phrases that we can't spell */
-            else if (!((si->check_cb == NULL)
-                     || si->check_cb(si, lp->phrase)))
-                continue; /* skip phrases that don't pass validation */
-            *curr++ = lp->phrase;
-            ++phrase_count;
+    curr = phrases;
+    for (prev = prev_phrases; *prev != NULL; ++prev) {
+        if (!pool_can_spell(si->pool, *prev)) {
+            --phrase_count;
+            continue;
+        } else if (!((si->check_cb == NULL)
+                   || si->check_cb(si, *prev))) {
+            --phrase_count;
+            continue;
         }
-        *curr = NULL;
-    } else {
-        char **prev;
-
-        /* Allocate enough memory to hold the previous phrase list.
-         * This wastes a few bytes since the new list is always going
-         * to be smaller, but saves more valuable time compared to
-         * iterating through twice to get the correct count. */
-        phrases = malloc((prev_phrase_count + 1) * sizeof(char*));
-        if (phrases == NULL)
-            return; /* again, this may be a problem */
-
-        curr = phrases;
-        for (prev = prev_phrases; *prev != NULL; ++prev) {
-            if (!pool_can_spell(si->pool, *prev))
-                continue;
-            else if (!((si->check_cb == NULL)
-                     || si->check_cb(si, *prev)))
-                continue; /* skip phrases that don't pass validation */
-            *curr++ = *prev;
-            ++phrase_count;
-        }
-        *curr = NULL;
+        *curr++ = *prev;
     }
+    *curr = NULL;
 
+    curr = phrases;
     if (depth == 0) {
         /* If this is the outermost loop, skip the number of phrases
          * specified by 'offset'. */
@@ -144,11 +151,6 @@ void sentence_build_inner(struct sentence_info *si,
         }
     }
 
-    /* Add the next word starting at this position in si->sentence. */
-    if (write_pos == NULL)
-        write_pos = si->sentence;
-
-    curr = phrases;
     while (*curr != NULL) {
         /* Remove this phrase's letters from the pool. */
         pool_subtract(si->pool, *curr);
