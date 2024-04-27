@@ -169,13 +169,15 @@ void sentence_build_inner(struct sentence_info *si,
             else
                 si->done_cb(si);
         } else {
-            char **new_phrases;
-
-            *n++ = ' ';
-            new_phrases = malloc((phrase_count + 1) * sizeof(char*));
+            char **new_phrases = malloc((phrase_count + 1) * sizeof(char*));
             if (new_phrases != NULL) {
                 memcpy(new_phrases, phrases,
                        (phrase_count + 1) * sizeof(char*));
+
+                /* Note that si->sentence may not be null-terminated yet,
+                 * but this is fine since it's only used within this function
+                 * until we exhaust our letter pool. */
+                *n++ = ' ';
 
                 /* Call this function recursively to extend the sentence. */
                 sentence_build_inner(si, n,

@@ -41,6 +41,13 @@ typedef void (*sentence_done_cb)(struct sentence_info *si);
 
 /*
  * Structure representing the state of sentence_build().
+ *
+ * To access the completed sentence, assign a callback function to done_cb.
+ * When this function is called, the sentence will be in its si->sentence.
+ * Beware that this is the ONLY way to access the sentence, as the 'sentence'
+ * member otherwise contains working state that is not necessarily safe for
+ * outside use. Its memory is freed when sentence_build() returns, so copy it
+ * to your own memory if you need it longer.
  */
 struct sentence_info {
     struct phrase_list *phrase_list;
