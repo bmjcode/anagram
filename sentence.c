@@ -61,9 +61,11 @@ sentence_build(struct sentence_info *si)
 {
     struct phrase_list *lp; /* list pointer */
     char **phrases, **dst;
-    size_t phrase_count;
 
-    if ((si == NULL) || (si->pool == NULL))
+    if ((si == NULL)
+        || (si->pool == NULL)
+        || (si->phrase_list == NULL)
+        || (si->phrase_count == 0))
         return;
 
     /* Allocate enough memory for the longest possible sentence:
@@ -74,7 +76,6 @@ sentence_build(struct sentence_info *si)
         return; /* this could be a problem */
     memset(si->sentence, 0, si->max_length * sizeof(char));
 
-    phrase_count = 0;
     phrases = malloc((si->phrase_count + 1) * sizeof(char*));
     if (phrases == NULL)
         return; /* this may be a problem */
@@ -86,13 +87,12 @@ sentence_build(struct sentence_info *si)
      * our working list in sentence_build_inner(). */
     for (lp = si->phrase_list, dst = phrases;
          lp != NULL;
-         lp = lp->next, ++dst) {
-        *dst = lp->phrase;
-        ++phrase_count;
+         lp = lp->next) {
+        *dst++ = lp->phrase;
     }
     *dst = NULL;
 
-    sentence_build_inner(si, NULL, phrases, phrase_count, 0);
+    sentence_build_inner(si, NULL, phrases, si->phrase_count, 0);
 
     free(si->sentence);
     free(phrases);
