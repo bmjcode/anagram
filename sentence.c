@@ -28,7 +28,7 @@
 
 static void sentence_build_inner(struct sentence_info *si,
                                  char *write_pos,
-                                 char **prev_phrases,
+                                 char **phrases,
                                  size_t phrase_count,
                                  size_t depth);
 #ifdef ENABLE_THREADING
@@ -102,16 +102,16 @@ sentence_build(struct sentence_info *si)
 
 void sentence_build_inner(struct sentence_info *si,
                           char *write_pos,
-                          char **prev_phrases,
+                          char **phrases,
                           size_t phrase_count,
                           size_t depth)
 {
-    char **phrases, **prev, **curr, *n, *p;
+    char **prev, **curr, *n, *p;
     size_t i;
 
     if ((si == NULL)
         || (si->pool == NULL)
-        || (prev_phrases == NULL)
+        || (phrases == NULL)
         || (phrase_count == 0))
         return;
 
@@ -119,19 +119,10 @@ void sentence_build_inner(struct sentence_info *si,
     if (write_pos == NULL)
         write_pos = si->sentence;
 
-    /* Allocate enough memory to hold the previous phrase list.
-     * If the new list is smaller this wastes a few bytes, but it saves
-     * us (more valuable) time compared to iterating through twice to get
-     * an exact count. Remember also this is a brute-force algorithm, so
-     * memory is going to be cheap on anything that runs it tolerably fast. */
-    phrases = malloc((phrase_count + 1) * sizeof(char*));
-    if (phrases == NULL)
-        return; /* again, this may be a problem */
-
-    /* Build a working list of phrases we can spell using letters in the
-     * current pool. */
-    curr = phrases;
-    for (prev = prev_phrases; *prev != NULL; ++prev) {
+    /* Filter our working list to remove phrases we can't spell with the
+     * letters in the current pool. If a check_cb function was specified,
+     * also remove phrases that don't pass validation. */
+    for (prev = curr = phrases; *prev != NULL; ++prev) {
         if (!pool_can_spell(si->pool, *prev)) {
             --phrase_count;
             continue;
@@ -178,9 +169,19 @@ void sentence_build_inner(struct sentence_info *si,
             else
                 si->done_cb(si);
         } else {
-            /* Call this function recursively to extend the sentence. */
+            char **new_phrases;
+
             *n++ = ' ';
-            sentence_build_inner(si, n, phrases, phrase_count, depth + 1);
+            new_phrases = malloc((phrase_count + 1) * sizeof(char*));
+            if (new_phrases != NULL) {
+                memcpy(new_phrases, phrases,
+                       (phrase_count + 1) * sizeof(char*));
+
+                /* Call this function recursively to extend the sentence. */
+                sentence_build_inner(si, n,
+                                     new_phrases, phrase_count, depth + 1);
+                free(new_phrases);
+            }
         }
 
         /* Restore used letters to the pool for the next cycle. */
@@ -194,8 +195,6 @@ void sentence_build_inner(struct sentence_info *si,
                 break;
         }
     }
-
-    free(phrases);
 }
 
 void
