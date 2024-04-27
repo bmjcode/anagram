@@ -55,11 +55,12 @@ usage(FILE *stream, char *prog_name)
 {
     fprintf(stream,
             "Solve the anacryptogram from Dinosaur Comics #1663.\n"
-            "Usage: %s [-h] [-f] [-l PATH] [-t NUM]\n"
+            "Usage: %s [-h] [-f] [-l PATH] [-t NUM] [-w NUM]\n"
             "  -h       Display this help message and exit\n"
             "  -f       Filter mode (read phrase list from stdin)\n"
             "  -l PATH  Override the default phrase list\n"
-            "  -t NUM   Start the specified number of threads (default: 1)\n",
+            "  -t NUM   Start the specified number of threads (default: 1)\n"
+            "  -w NUM   Limit results to this many words or fewer\n",
             prog_name);
 }
 
@@ -88,7 +89,7 @@ main(int argc, char **argv)
     list_path = NULL;
     num_threads = 1;
 
-    while ((opt = getopt(argc, argv, "hfl:t:")) != -1) {
+    while ((opt = getopt(argc, argv, "hfl:t:w:")) != -1) {
         switch (opt) {
             case 'h':
                 /* Display help and exit */
@@ -106,6 +107,10 @@ main(int argc, char **argv)
             case 't':
                 /* Set the number of threads */
                 num_threads = strtoul(optarg, NULL, 0);
+                break;
+            case 'w':
+                /* Set the maximum number of words */
+                si.max_words = strtoul(optarg, NULL, 0);
                 break;
         }
     }
