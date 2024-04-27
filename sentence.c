@@ -26,11 +26,16 @@
 
 #include "sentence.h"
 
+/* Internal state for sentence_build_inner() */
+struct sbi_state {
+    char *write_pos;
+    char **phrases;
+    size_t phrase_count;
+    size_t depth;
+};
+
 static void sentence_build_inner(struct sentence_info *si,
-                                 char *write_pos,
-                                 char **phrases,
-                                 size_t phrase_count,
-                                 size_t depth);
+                                 struct sbi_state *sbi);
 #ifdef ENABLE_THREADING
 /* Wrapper to call sentence_build() in a thread */
 static void *run_thread(void *si);
@@ -59,14 +64,18 @@ sentence_info_init(struct sentence_info *si, pool_t *pool)
 void
 sentence_build(struct sentence_info *si)
 {
+    struct sbi_state sbi;
     struct phrase_list *lp; /* list pointer */
-    char **phrases, **dst;
+    char **dst;
 
     if ((si == NULL)
         || (si->pool == NULL)
         || (si->phrase_list == NULL)
         || (si->phrase_count == 0))
         return;
+
+    sbi.write_pos = NULL;
+    sbi.depth = 0;
 
     /* Allocate enough memory for the longest possible sentence:
      * all single-letter words with a space or '\0' after each. */
@@ -76,8 +85,9 @@ sentence_build(struct sentence_info *si)
         return; /* this could be a problem */
     memset(si->sentence, 0, si->max_length * sizeof(char));
 
-    phrases = malloc((si->phrase_count + 1) * sizeof(char*));
-    if (phrases == NULL)
+    sbi.phrase_count = si->phrase_count;
+    sbi.phrases = malloc((sbi.phrase_count + 1) * sizeof(char*));
+    if (sbi.phrases == NULL)
         return; /* this may be a problem */
 
     /* Flatten the phrase list into an array of char* pointers with a
@@ -85,58 +95,55 @@ sentence_build(struct sentence_info *si)
      * than the original linked list since it requires only one (slow)
      * memory allocation to construct a duplicate, as we do when we filter
      * our working list in sentence_build_inner(). */
-    for (lp = si->phrase_list, dst = phrases;
+    for (lp = si->phrase_list, dst = sbi.phrases;
          lp != NULL;
          lp = lp->next) {
         *dst++ = lp->phrase;
     }
     *dst = NULL;
 
-    sentence_build_inner(si, NULL, phrases, si->phrase_count, 0);
+    sentence_build_inner(si, &sbi);
 
     free(si->sentence);
-    free(phrases);
+    free(sbi.phrases);
     si->sentence = NULL;
     si->max_length = 0;
 }
 
 void sentence_build_inner(struct sentence_info *si,
-                          char *write_pos,
-                          char **phrases,
-                          size_t phrase_count,
-                          size_t depth)
+                          struct sbi_state *sbi)
 {
     char **prev, **curr, *n, *p;
     size_t i;
 
     if ((si == NULL)
         || (si->pool == NULL)
-        || (phrases == NULL)
-        || (phrase_count == 0))
+        || (sbi->phrases == NULL)
+        || (sbi->phrase_count == 0))
         return;
 
     /* Add the next word starting at this position in si->sentence. */
-    if (write_pos == NULL)
-        write_pos = si->sentence;
+    if (sbi->write_pos == NULL)
+        sbi->write_pos = si->sentence;
 
     /* Filter our working list to remove phrases we can't spell with the
      * letters in the current pool. If a check_cb function was specified,
      * also remove phrases that don't pass validation. */
-    for (prev = curr = phrases; *prev != NULL; ++prev) {
+    for (prev = curr = sbi->phrases; *prev != NULL; ++prev) {
         if (!pool_can_spell(si->pool, *prev)) {
-            --phrase_count;
+            --sbi->phrase_count;
             continue;
         } else if (!((si->check_cb == NULL)
                    || si->check_cb(si, *prev))) {
-            --phrase_count;
+            --sbi->phrase_count;
             continue;
         }
         *curr++ = *prev;
     }
     *curr = NULL;
 
-    curr = phrases;
-    if (depth == 0) {
+    curr = sbi->phrases;
+    if (sbi->depth == 0) {
         /* If this is the outermost loop, skip the number of phrases
          * specified by 'offset'. */
         for (i = 0; i < si->offset; ++i) {
@@ -156,7 +163,7 @@ void sentence_build_inner(struct sentence_info *si,
          * the length of the destination string. We can safely assume this
          * won't overflow because something else would have already overflowed
          * long before we got here. */
-        n = write_pos;
+        n = sbi->write_pos;
         p = *curr;
         while (*p != '\0')
             *n++ = *p++;
@@ -169,20 +176,24 @@ void sentence_build_inner(struct sentence_info *si,
             else
                 si->done_cb(si);
         } else {
-            char **new_phrases = malloc((phrase_count + 1) * sizeof(char*));
-            if (new_phrases != NULL) {
-                memcpy(new_phrases, phrases,
-                       (phrase_count + 1) * sizeof(char*));
+            struct sbi_state new_sbi;
+            size_t buf_size = (sbi->phrase_count + 1) * sizeof(char*);
+
+            new_sbi.phrases = malloc(buf_size);
+            if (new_sbi.phrases != NULL) {
+                memcpy(new_sbi.phrases, sbi->phrases, buf_size);
+                new_sbi.phrase_count = sbi->phrase_count;
+                new_sbi.depth = sbi->depth + 1;
 
                 /* Note that si->sentence may not be null-terminated yet,
                  * but this is fine since it's only used within this function
                  * until we exhaust our letter pool. */
                 *n++ = ' ';
+                new_sbi.write_pos = n;
 
                 /* Call this function recursively to extend the sentence. */
-                sentence_build_inner(si, n,
-                                     new_phrases, phrase_count, depth + 1);
-                free(new_phrases);
+                sentence_build_inner(si, &new_sbi);
+                free(new_sbi.phrases);
             }
         }
 
@@ -191,7 +202,7 @@ void sentence_build_inner(struct sentence_info *si,
 
         /* If this is the outermost loop, advance by the number of phrases
          * specified by 'step'. Otherwise, advance to the next phrase. */
-        for (i = 0; i < (depth == 0 ? si->step : 1); ++i) {
+        for (i = 0; i < (sbi->depth == 0 ? si->step : 1); ++i) {
             ++curr;
             if (*curr == NULL)
                 break;
