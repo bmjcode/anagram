@@ -63,7 +63,7 @@ sentence_build(struct sentence_info *si)
 
     /* Allocate enough memory for the longest possible sentence:
      * all single-letter words with a space or '\0' after each. */
-    si->max_length = 2 * pool_count(si->pool);
+    si->max_length = 2 * pool_count_all(si->pool);
     si->sentence = malloc(si->max_length * sizeof(char));
     if (si->sentence == NULL)
         return; /* this could be a problem */

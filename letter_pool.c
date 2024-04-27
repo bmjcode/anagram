@@ -21,6 +21,19 @@
 
 #include "letter_pool.h"
 
+size_t
+pool_count_all(pool_t *pool)
+{
+    size_t i, count = 0;
+
+    if (pool == NULL)
+        return 0;
+
+    for (i = 0; i < POOL_SIZE; ++i)
+        count += pool[i];
+    return count;
+}
+
 void
 pool_add(pool_t *pool, const char *letters)
 {
@@ -82,19 +95,6 @@ pool_reset(pool_t *pool)
 
     for (i = 0; i < POOL_SIZE; ++i)
         pool[i] = 0;
-}
-
-size_t
-pool_count(pool_t *pool)
-{
-    size_t i, count = 0;
-
-    if (pool == NULL)
-        return 0;
-
-    for (i = 0; i < POOL_SIZE; ++i)
-        count += pool[i];
-    return count;
 }
 
 void
