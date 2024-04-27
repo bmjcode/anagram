@@ -59,6 +59,11 @@ void pool_subtract(pool_t *pool, const char *letters);
 bool pool_can_spell(pool_t *pool, const char *phrase);
 
 /*
+ * Returns the total number of (non-unique) letters in the pool.
+ */
+size_t pool_count(pool_t *pool);
+
+/*
  * Reset a pool's letter count to zero.
  *
  * Always call this to initialize a new pool before adding letters.
@@ -68,7 +73,7 @@ void pool_reset(pool_t *pool);
 /*
  * Return whether the letter pool is empty (all counts are zero).
  */
-bool pool_is_empty(pool_t *pool);
+#define pool_is_empty(pool) (pool_count(pool) == 0)
 
 /*
  * Make a copy of a letter pool.

@@ -84,19 +84,17 @@ pool_reset(pool_t *pool)
         pool[i] = 0;
 }
 
-bool
-pool_is_empty(pool_t *pool)
+size_t
+pool_count(pool_t *pool)
 {
-    size_t i;
+    size_t i, count = 0;
 
     if (pool == NULL)
-        return false; /* vacuous since there is no pool */
+        return 0;
 
-    for (i = 0; i < POOL_SIZE; ++i) {
-        if (pool[i] > 0)
-            return false;
-    }
-    return true;
+    for (i = 0; i < POOL_SIZE; ++i)
+        count += pool[i];
+    return count;
 }
 
 void

@@ -47,8 +47,7 @@ struct sentence_info {
     size_t phrase_count;
     pool_t *pool;
     char *sentence;
-    size_t length;
-    size_t depth; /* how many recursive calls deep we are */
+    size_t max_length;
 
     /* Callback functions */
     sentence_check_cb check_cb;
@@ -64,7 +63,7 @@ struct sentence_info {
 /*
  * Initialize a sentence_info structure.
  */
-void sentence_info_init(struct sentence_info *si);
+void sentence_info_init(struct sentence_info *si, pool_t *pool);
 
 /*
  * Build a "sentence" using phrases formed from letters in the pool.

@@ -50,8 +50,7 @@ main(int argc, char **argv)
     unsigned short num_threads;
 
     pool_reset(pool);
-    sentence_info_init(&si);
-    si.pool = pool;
+    sentence_info_init(&si, pool);
 
     fp = NULL;
     list_path = NULL;

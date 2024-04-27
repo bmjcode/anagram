@@ -26,23 +26,27 @@
 
 #include "sentence.h"
 
+static void sentence_build_inner(struct sentence_info *si,
+                                 char *write_pos,
+                                 struct phrase_list *phrase_list,
+                                 size_t phrase_count,
+                                 size_t depth);
 #ifdef ENABLE_THREADING
 /* Wrapper to call sentence_build() in a thread */
 static void *run_thread(void *si);
 #endif /* ENABLE_THREADING */
 
 void
-sentence_info_init(struct sentence_info *si)
+sentence_info_init(struct sentence_info *si, pool_t *pool)
 {
     if (si == NULL)
         return;
 
     si->phrase_list = NULL;
     si->phrase_count = 0;
-    si->pool = NULL;
+    si->pool = pool;
     si->sentence = NULL;
-    si->length = 0;
-    si->depth = 0;
+    si->max_length = 0;
 
     si->check_cb = NULL;
     si->done_cb = NULL;
@@ -56,38 +60,52 @@ sentence_info_init(struct sentence_info *si)
 void
 sentence_build(struct sentence_info *si)
 {
-    struct phrase_list *curr;
-    size_t i, phrases_used;
-
     if ((si == NULL) || (si->pool == NULL))
         return;
 
-    if (pool_is_empty(si->pool)) {
-        if (si->sentence != NULL) {
-            /* We've completed a sentence! */
-            if (si->done_cb == NULL)
-                printf("%s\n", si->sentence);
-            else
-                si->done_cb(si);
-            return;
-        } else
-            return;
-    } else if (si->phrase_list == NULL)
+    /* Allocate enough memory for the longest possible sentence:
+     * all single-letter words with a space or '\0' after each. */
+    si->max_length = 2 * pool_count(si->pool);
+    si->sentence = malloc(si->max_length * sizeof(char));
+    if (si->sentence == NULL)
+        return; /* this could be a problem */
+    memset(si->sentence, 0, si->max_length * sizeof(char));
+
+    sentence_build_inner(si, NULL, si->phrase_list, si->phrase_count, 0);
+    free(si->sentence);
+}
+
+void sentence_build_inner(struct sentence_info *si,
+                          char *write_pos,
+                          struct phrase_list *phrase_list,
+                          size_t phrase_count,
+                          size_t depth)
+{
+    struct phrase_list *curr, *new_list;
+    size_t i, phrases_used, new_count;
+    char *n, *p;
+
+    if ((si == NULL) || (si->pool == NULL) || (phrase_list == NULL))
         return;
 
+    /* We'll come back to this */
+    new_list = NULL;
+    new_count = 0;
+
     /* Skip the number of phrases specified by 'offset'. */
-    curr = si->phrase_list;
+    curr = phrase_list;
     for (i = 0; i < si->offset; ++i) {
         curr = curr->next;
         if (curr == NULL)
             return;
     }
 
+    /* Add the next word starting at this position in si->sentence. */
+    if (write_pos == NULL)
+        write_pos = si->sentence;
+
     phrases_used = 0;
     while (curr != NULL) {
-        struct sentence_info nsi;
-        char *n, *p;
-
         if (curr->phrase == NULL)
             break; /* best to assume something's really gone wrong here */
 
@@ -99,23 +117,8 @@ sentence_build(struct sentence_info *si)
                    || si->check_cb(si, curr)))
             continue;
 
-        sentence_info_init(&nsi);
-        nsi.pool = si->pool;
-        nsi.depth = si->depth + 1;
-        nsi.check_cb = si->check_cb;
-        nsi.done_cb = si->done_cb;
-        nsi.user_data = si->user_data;
-
         /* Remove this phrase's letters from the pool. */
-        pool_subtract(nsi.pool, curr->phrase);
-
-        /* Remove phrases we can no longer spell from the list.
-         * Note a NULL value here can mean success (we've used all the
-         * letters in the pool) or failure (the memory allocation failed).
-         * We will determine which it is on the next recursive call. */
-        nsi.phrase_list = phrase_list_filter(si->phrase_list,
-                                             &nsi.phrase_count,
-                                             nsi.pool);
+        pool_subtract(si->pool, curr->phrase);
 
         /* Add this phrase to our sentence.
          * Copying bytes manually is more efficient than using the standard
@@ -123,34 +126,35 @@ sentence_build(struct sentence_info *si)
          * the length of the destination string. We can safely assume this
          * won't overflow because something else would have already overflowed
          * long before we got here. */
-        if (si->sentence == NULL)
-            nsi.length = curr->length;
-        else
-            nsi.length = si->length + curr->length + 1; /* add a space */
-
-        nsi.sentence = malloc((nsi.length + 1) * sizeof(char));
-        if (nsi.sentence == NULL)
-            break;
-
-        n = nsi.sentence;
-        if (si->sentence != NULL) {
-            p = si->sentence;
-            while (*p != '\0')
-                *n++ = *p++;
-            *n++ = ' ';
-        }
+        n = write_pos;
         p = curr->phrase;
         while (*p != '\0')
             *n++ = *p++;
-        *n = '\0';
 
-        /* Call this function recursively to process the extended sentence. */
-        sentence_build(&nsi);
-        free(nsi.sentence);
-        phrase_list_filter_free(nsi.phrase_list);
+        if (pool_is_empty(si->pool)) {
+            *n = '\0';
+            /* We've completed a sentence! */
+            if (si->done_cb == NULL)
+                printf("%s\n", si->sentence);
+            else
+                si->done_cb(si);
+        } else {
+            *n++ = ' ';
+
+            /* Remove phrases we can no longer spell from the list.
+             * Note a NULL value here can mean success (we've used all the
+             * letters in the pool) or failure (the memory allocation failed).
+             * We will determine which it is on the next recursive call. */
+            new_count = phrase_count;
+            new_list = phrase_list_filter(phrase_list, &new_count, si->pool);
+
+            /* Call this function recursively to extend the sentence. */
+            sentence_build_inner(si, n, new_list, new_count, depth + 1);
+            phrase_list_filter_free(new_list);
+        }
 
         /* Restore used letters to the pool for the next cycle. */
-        pool_add(nsi.pool, curr->phrase);
+        pool_add(si->pool, curr->phrase);
 
         /* If we have a limit on the number of phrases to process,
          * stop when we've reached it. */
