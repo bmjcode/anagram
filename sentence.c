@@ -126,9 +126,6 @@ void sentence_build_inner(struct sentence_info *si,
         || (sbi->phrase_count == 0))
         return;
 
-    if ((si->max_words > 0) && (sbi->words_used >= si->max_words))
-        return; /* we've used up all our words */
-
     /* Add the next word starting at this position in si->sentence. */
     if (sbi->write_pos == NULL)
         sbi->write_pos = si->sentence;
@@ -182,7 +179,8 @@ void sentence_build_inner(struct sentence_info *si,
                 printf("%s\n", si->sentence);
             else
                 si->done_cb(si);
-        } else {
+        } else if ((si->max_words == 0)
+                   || (sbi->words_used + 1 < si->max_words)) {
             struct sbi_state new_sbi;
             size_t buf_size = (sbi->phrase_count + 1) * sizeof(char*);
 
