@@ -32,6 +32,7 @@ struct sbi_state {
     char **phrases;
     size_t phrase_count;
     size_t depth;
+    size_t words_used; /* counting towards si->max_words */
 };
 
 static void sentence_build_inner(struct sentence_info *si,
@@ -52,6 +53,8 @@ sentence_info_init(struct sentence_info *si, pool_t *pool)
     si->pool = pool;
     si->sentence = NULL;
     si->max_length = 0;
+
+    si->max_words = 0;
 
     si->check_cb = NULL;
     si->done_cb = NULL;
@@ -76,6 +79,7 @@ sentence_build(struct sentence_info *si)
 
     sbi.write_pos = NULL;
     sbi.depth = 0;
+    sbi.words_used = 0;
 
     /* Allocate enough memory for the longest possible sentence:
      * all single-letter words with a space or '\0' after each. */
@@ -121,6 +125,9 @@ void sentence_build_inner(struct sentence_info *si,
         || (sbi->phrases == NULL)
         || (sbi->phrase_count == 0))
         return;
+
+    if ((si->max_words > 0) && (sbi->words_used >= si->max_words))
+        return; /* we've used up all our words */
 
     /* Add the next word starting at this position in si->sentence. */
     if (sbi->write_pos == NULL)
@@ -184,6 +191,7 @@ void sentence_build_inner(struct sentence_info *si,
                 memcpy(new_sbi.phrases, sbi->phrases, buf_size);
                 new_sbi.phrase_count = sbi->phrase_count;
                 new_sbi.depth = sbi->depth + 1;
+                new_sbi.words_used = sbi->words_used + 1;
 
                 /* Note that si->sentence may not be null-terminated yet,
                  * but this is fine since it's only used within this function

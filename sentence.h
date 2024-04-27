@@ -54,7 +54,10 @@ struct sentence_info {
     size_t phrase_count;
     pool_t *pool;
     char *sentence;
-    size_t max_length;
+    size_t max_length; /* used as the buffer size for 'sentence' */
+
+    /* Use these to impose constraints on sentence building */
+    size_t max_words; /* max number of words in a sentence (0 for unlimited) */
 
     /* Callback functions */
     sentence_check_cb check_cb;
