@@ -93,8 +93,11 @@ sentence_build(struct sentence_info *si)
     *dst = NULL;
 
     sentence_build_inner(si, NULL, phrases, phrase_count, 0);
+
     free(si->sentence);
     free(phrases);
+    si->sentence = NULL;
+    si->max_length = 0;
 }
 
 void sentence_build_inner(struct sentence_info *si,
