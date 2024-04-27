@@ -27,6 +27,7 @@
 
 static bool qwantzle_check(struct sentence_info *si,
                            struct phrase_list *newest_phrase);
+static void qwantzle_solved(struct sentence_info *si);
 static void usage(FILE *stream, char *prog_name);
 
 bool
@@ -42,6 +43,13 @@ qwantzle_check(struct sentence_info *si,
             return false;
     }
     return true;
+}
+
+void
+qwantzle_solved(struct sentence_info *si)
+{
+    /* The first word of the solution is "I" */
+    printf("I %s\n", si->sentence);
 }
 
 void
@@ -68,15 +76,12 @@ main(int argc, char **argv)
     unsigned short num_threads;
 
     pool_reset(pool);
-    sentence_info_init(&si);
-    si.pool = pool;
+    sentence_info_init(&si, pool);
     si.check_cb = qwantzle_check;
+    si.done_cb = qwantzle_solved;
 
-    /* The first word of the solution is "I" */
-    si.sentence = "I";
-    si.length = 1;
-
-    /* Add the remaining letters */
+    /* The first word of the solution is "I", which is added by
+     * qwantzle_solved() so we only have to solve for the remaining letters. */
     pool_add(si.pool,
              "ttttttttttttooooooooooeeeeeeeeaaaaaaallllllnnnnnn"
              "uuuuuuiiiiisssssdddddhhhhhyyyyyIIrrrfffbbwwkcmvg");
