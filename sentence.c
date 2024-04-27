@@ -29,7 +29,6 @@
 static void sentence_build_inner(struct sentence_info *si,
                                  char *write_pos,
                                  struct phrase_list *phrase_list,
-                                 size_t phrase_count,
                                  size_t depth);
 #ifdef ENABLE_THREADING
 /* Wrapper to call sentence_build() in a thread */
@@ -54,7 +53,6 @@ sentence_info_init(struct sentence_info *si, pool_t *pool)
 
     si->step = 1;
     si->offset = 0;
-    si->limit = 0;
 }
 
 void
@@ -71,50 +69,49 @@ sentence_build(struct sentence_info *si)
         return; /* this could be a problem */
     memset(si->sentence, 0, si->max_length * sizeof(char));
 
-    sentence_build_inner(si, NULL, si->phrase_list, si->phrase_count, 0);
+    sentence_build_inner(si, NULL, si->phrase_list, 0);
     free(si->sentence);
 }
 
 void sentence_build_inner(struct sentence_info *si,
                           char *write_pos,
                           struct phrase_list *phrase_list,
-                          size_t phrase_count,
                           size_t depth)
 {
-    struct phrase_list *curr, *new_list;
-    size_t i, phrases_used, new_count;
+    struct phrase_list *curr, *working_list;
+    size_t i;
     char *n, *p;
 
     if ((si == NULL) || (si->pool == NULL) || (phrase_list == NULL))
         return;
 
-    /* We'll come back to this */
-    new_list = NULL;
-    new_count = 0;
+    /* Build a working list of phrases we can spell using letters in the
+     * current pool. */
+    working_list = phrase_list_filter(phrase_list, NULL, si->pool);
+    if (working_list == NULL)
+        return; /* this may be a problem */
 
-    /* Skip the number of phrases specified by 'offset'. */
-    curr = phrase_list;
-    for (i = 0; i < si->offset; ++i) {
-        curr = curr->next;
-        if (curr == NULL)
-            return;
+    curr = working_list;
+    if (depth == 0) {
+        /* If this is the outermost loop, skip the number of phrases
+         * specified by 'offset'. */
+        for (i = 0; i < si->offset; ++i) {
+            curr = curr->next;
+            if (curr == NULL)
+                return;
+        }
     }
 
     /* Add the next word starting at this position in si->sentence. */
     if (write_pos == NULL)
         write_pos = si->sentence;
 
-    phrases_used = 0;
     while (curr != NULL) {
         if (curr->phrase == NULL)
             break; /* best to assume something's really gone wrong here */
 
-        /* Skip phrases that we can't spell with our letter pool
-         * or that don't pass our validation check. */
-        if (!pool_can_spell(si->pool, curr->phrase))
-            continue;
-        else if (!((si->check_cb == NULL)
-                   || si->check_cb(si, curr)))
+        /* Skip phrases that don't pass our validation check. */
+        if (!((si->check_cb == NULL) || si->check_cb(si, curr)))
             continue;
 
         /* Remove this phrase's letters from the pool. */
@@ -132,43 +129,31 @@ void sentence_build_inner(struct sentence_info *si,
             *n++ = *p++;
 
         if (pool_is_empty(si->pool)) {
-            *n = '\0';
             /* We've completed a sentence! */
+            *n = '\0';
             if (si->done_cb == NULL)
                 printf("%s\n", si->sentence);
             else
                 si->done_cb(si);
         } else {
-            *n++ = ' ';
-
-            /* Remove phrases we can no longer spell from the list.
-             * Note a NULL value here can mean success (we've used all the
-             * letters in the pool) or failure (the memory allocation failed).
-             * We will determine which it is on the next recursive call. */
-            new_count = phrase_count;
-            new_list = phrase_list_filter(phrase_list, &new_count, si->pool);
-
             /* Call this function recursively to extend the sentence. */
-            sentence_build_inner(si, n, new_list, new_count, depth + 1);
-            phrase_list_filter_free(new_list);
+            *n++ = ' ';
+            sentence_build_inner(si, n, working_list, depth + 1);
         }
 
         /* Restore used letters to the pool for the next cycle. */
         pool_add(si->pool, curr->phrase);
 
-        /* If we have a limit on the number of phrases to process,
-         * stop when we've reached it. */
-        ++phrases_used;
-        if ((si->limit > 0) && (phrases_used >= si->limit))
-            break;
-
-        /* Advance by the number of phrases specified by 'step'. */
-        for (i = 0; i < si->step; ++i) {
+        /* If this is the outermost loop, advance by the number of phrases
+         * specified by 'step'. Otherwise, advance to the next phrase. */
+        for (i = 0; i < (depth == 0 ? si->step : 1); ++i) {
             curr = curr->next;
             if (curr == NULL)
                 break;
         }
     }
+
+    phrase_list_filter_free(working_list);
 }
 
 void
@@ -221,7 +206,6 @@ sentence_build_threaded(struct sentence_info *si,
         memcpy(tsi[i], si, sizeof(struct sentence_info));
         tsi[i]->step = num_threads;
         tsi[i]->offset = i;
-        tsi[i]->limit = tsi[i]->phrase_count / num_threads;
 
         /* Each thread needs its own letter pool */
         tsi[i]->pool = malloc(POOL_SIZE * sizeof(pool_t));
@@ -229,11 +213,6 @@ sentence_build_threaded(struct sentence_info *si,
             goto cleanup;
         pool_copy(si->pool, tsi[i]->pool);
     }
-
-    /* If the phrase list doesn't divide evenly, distribute the remainder
-     * among the earliest threads */
-    for (i = 0; i < si->phrase_count % num_threads; ++i)
-        ++(tsi[i]->limit);
 
     /* Start each thread */
     for (i = 0; i < num_threads; ++i) {

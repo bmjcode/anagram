@@ -57,7 +57,6 @@ struct sentence_info {
     /* Use these to divide the phrase list among multiple threads */
     size_t step;    /* use every nth word */
     size_t offset;  /* skip the first n words */
-    size_t limit;   /* stop after n words */
 };
 
 /*
