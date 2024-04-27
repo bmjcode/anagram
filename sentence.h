@@ -31,7 +31,7 @@ struct sentence_info;
  * If none is specified, all potential sentences are accepted.
  */
 typedef bool (*sentence_check_cb)(struct sentence_info *si,
-                                  struct phrase_list *newest_phrase);
+                                  char *newest_phrase);
 
 /*
  * Callback function when a sentence is completed.

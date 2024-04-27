@@ -25,18 +25,16 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
-static bool qwantzle_check(struct sentence_info *si,
-                           struct phrase_list *newest_phrase);
+static bool qwantzle_check(struct sentence_info *si, char *newest_phrase);
 static void qwantzle_solved(struct sentence_info *si);
 static void usage(FILE *stream, char *prog_name);
 
 bool
-qwantzle_check(struct sentence_info *si,
-               struct phrase_list *newest_phrase)
+qwantzle_check(struct sentence_info *si, char *newest_phrase)
 {
     /* The final letter is "w" */
     if (pool_is_empty(si->pool)) {
-        if (newest_phrase->phrase[newest_phrase->length - 1] != 'w')
+        if (newest_phrase[strlen(newest_phrase) - 1] != 'w')
             return false;
     } else {
         if (!pool_contains(si->pool, 'w'))
