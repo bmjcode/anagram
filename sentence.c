@@ -77,7 +77,6 @@ sentence_build(struct sentence_info *si)
         || (si->phrase_count == 0))
         return;
 
-    sbi.write_pos = NULL;
     sbi.depth = 0;
     sbi.words_used = 0;
 
@@ -88,6 +87,9 @@ sentence_build(struct sentence_info *si)
     if (si->sentence == NULL)
         return; /* this could be a problem */
     memset(si->sentence, 0, si->max_length * sizeof(char));
+
+    /* This is the position where we add the next word in the sentence */
+    sbi.write_pos = si->sentence;
 
     sbi.phrase_count = si->phrase_count;
     sbi.phrases = malloc((sbi.phrase_count + 1) * sizeof(char*));
@@ -123,15 +125,12 @@ void sentence_build_inner(struct sentence_info *si,
     char **prev, **curr, *n, *p;
     size_t i;
 
-    if ((si == NULL)
-        || (si->pool == NULL)
-        || (sbi->phrases == NULL)
-        || (sbi->phrase_count == 0))
-        return;
-
-    /* Add the next word starting at this position in si->sentence. */
-    if (sbi->write_pos == NULL)
-        sbi->write_pos = si->sentence;
+    /*
+     * We can skip the sanity checks here because this function is only
+     * ever called from sentence_build(), which already did them, or
+     * recursively from itself. If something was going to overflow, it
+     * would have done so long before we got here.
+     */
 
     /* Filter our working list to remove phrases we can't spell with the
      * letters in the current pool. If a check_cb function was specified,
