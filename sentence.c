@@ -95,10 +95,13 @@ sentence_build(struct sentence_info *si)
         return; /* this may be a problem */
 
     /* Flatten the phrase list into an array of char* pointers with a
-     * terminating NULL pointer. This is a more practical working format
-     * than the original linked list since it requires only one (slow)
-     * memory allocation to construct a duplicate, as we do when we filter
-     * our working list in sentence_build_inner(). */
+     * terminating NULL pointer. We read it in as a linked list because
+     * we don't know the number of items in advance, and iterating
+     * through again to count would be either slow (reading from disk)
+     * or impossible (reading from stdin). Once we reach our inner loop
+     * our slowest operation is memory allocation, and duplicating an
+     * array -- which we do for each iteration -- only requires one of
+     * those as opposed to many for a linked list. */
     for (lp = si->phrase_list, dst = sbi.phrases;
          lp != NULL;
          lp = lp->next) {
