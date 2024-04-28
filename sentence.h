@@ -23,48 +23,58 @@
 #include "letter_pool.h"
 #include "phrase_list.h"
 
-struct sentence_info;
-
-/*
- * Callback function to perform a validation check on a sentence.
- * Return true to accept, false to reject.
- * If none is specified, all potential sentences are accepted.
- */
-typedef bool (*sentence_check_cb)(struct sentence_info *si,
-                                  char *newest_phrase);
-
-/*
- * Callback function when a sentence is completed.
- * If none is specified, the completed sentence is printed to stdout.
- *
- * The memory for the 'sentence' parameter is managed by sentence_build(),
- * which frees it when it returns. If you need the completed sentence longer,
- * copy it to your own memory.
- */
-typedef void (*sentence_done_cb)(char *sentence, void *user_data);
-
 /*
  * Structure representing the state of sentence_build().
  *
- * To access the completed sentence, assign a callback function to done_cb,
- * which receives the sentence as one of its parameters.
+ * To access the completed sentence, assign a callback function to
+ * sentence_cb, which receives it as one of its parameters.
  */
 struct sentence_info {
     struct phrase_list *phrase_list;
     size_t phrase_count;
     pool_t *pool;
+    void *user_data; /* arbitrary data passed to callback functions */
 
     /* Use these to impose constraints on sentence building */
     size_t max_words; /* max number of words in a sentence (0 for unlimited) */
 
-    /* Callback functions */
-    sentence_check_cb check_cb;
-    sentence_done_cb done_cb;
-    void *user_data; /* user-specified arbitrary data */
-
     /* Use these to divide the phrase list among multiple threads */
     size_t step;    /* use every nth word */
     size_t offset;  /* skip the first n words */
+
+    /*
+     * Callback function to interrupt sentence_build().
+     * Return true if the operation has been canceled, false otherwise.
+     *
+     * Note sentence_build() uses a recursive inner loop, so this function
+     * may be called multiple times before the former returns. This means
+     * that, for example, to stop after a certain number of cycles you should
+     * use >= rather than == in your test condition.
+     */
+    bool (*canceled_cb)(void *user_data);
+
+    /*
+     * Callback function to implement a phrase filter.
+     * Return true to accept a candidate, false to reject it.
+     * If none is specified, all candidates are accepted.
+     */
+    bool (*phrase_filter_cb)(char *candidate, void *user_data);
+
+    /*
+     * Callback function when a sentence is completed.
+     * If none is specified, the sentence is printed to stdout.
+     *
+     * Memory for the 'sentence' parameter belongs to sentence_build(),
+     * which frees it when it returns. If you need the completed sentence
+     * longer, copy it to your own memory.
+    */
+    void (*sentence_cb)(char *sentence, void *user_data);
+
+    /*
+     * Callback function for just before sentence_build() returns.
+     * Note this function is still called if sentence_build() is canceled.
+     */
+    void (*finished_cb)(void *user_data);
 };
 
 /*

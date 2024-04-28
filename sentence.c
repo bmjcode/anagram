@@ -52,15 +52,17 @@ sentence_info_init(struct sentence_info *si, pool_t *pool)
     si->phrase_list = NULL;
     si->phrase_count = 0;
     si->pool = pool;
+    si->user_data = NULL;
 
     si->max_words = 0;
 
-    si->check_cb = NULL;
-    si->done_cb = NULL;
-    si->user_data = NULL;
-
     si->step = 1;
     si->offset = 0;
+
+    si->canceled_cb = NULL;
+    si->phrase_filter_cb = NULL;
+    si->sentence_cb = NULL;
+    si->finished_cb = NULL;
 }
 
 void
@@ -110,6 +112,8 @@ sentence_build(struct sentence_info *si)
     *dst = NULL;
 
     sentence_build_inner(si, &sbi);
+    if (si->finished_cb != NULL)
+        si->finished_cb(si->user_data);
 
     free(sbi.sentence);
     free(sbi.phrases);
@@ -128,6 +132,9 @@ void sentence_build_inner(struct sentence_info *si,
      * would have done so long before we got here.
      */
 
+    if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
+        return;
+
     /* Filter our working list to remove phrases we can't spell with the
      * letters in the current pool. If a check_cb function was specified,
      * also remove phrases that don't pass validation. */
@@ -135,8 +142,8 @@ void sentence_build_inner(struct sentence_info *si,
         if (!pool_can_spell(si->pool, *prev)) {
             --sbi->phrase_count;
             continue;
-        } else if (!((si->check_cb == NULL)
-                   || si->check_cb(si, *prev))) {
+        } else if (!((si->phrase_filter_cb == NULL)
+                   || si->phrase_filter_cb(*prev, si->user_data))) {
             --sbi->phrase_count;
             continue;
         }
@@ -156,6 +163,9 @@ void sentence_build_inner(struct sentence_info *si,
     }
 
     while (*curr != NULL) {
+        if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
+            break;
+
         /* Remove this phrase's letters from the pool. */
         pool_subtract(si->pool, *curr);
 
@@ -168,10 +178,10 @@ void sentence_build_inner(struct sentence_info *si,
         if (pool_is_empty(si->pool)) {
             /* We've completed a sentence! */
             *n = '\0';
-            if (si->done_cb == NULL)
+            if (si->sentence_cb == NULL)
                 printf("%s\n", sbi->sentence);
             else
-                si->done_cb(sbi->sentence, si->user_data);
+                si->sentence_cb(sbi->sentence, si->user_data);
         } else if ((si->max_words == 0)
                    || (sbi->words_used + 1 < si->max_words)) {
             struct sbi_state new_sbi;

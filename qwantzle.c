@@ -25,16 +25,18 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
-static bool qwantzle_check(struct sentence_info *si, char *newest_phrase);
+static bool qwantzle_phrase_filter(char *candidate, void *user_data);
 static void qwantzle_solved(char *sentence, void *user_data);
 static void usage(FILE *stream, char *prog_name);
 
 bool
-qwantzle_check(struct sentence_info *si, char *newest_phrase)
+qwantzle_phrase_filter(char *candidate, void *user_data)
 {
+    struct sentence_info *si = user_data;
+
     /* The final letter is "w" */
     if (pool_is_empty(si->pool)) {
-        if (newest_phrase[strlen(newest_phrase) - 1] != 'w')
+        if (candidate[strlen(candidate) - 1] != 'w')
             return false;
     } else {
         if (!pool_contains(si->pool, 'w'))
@@ -78,8 +80,9 @@ main(int argc, char **argv)
 
     pool_reset(pool);
     sentence_info_init(&si, pool);
-    si.check_cb = qwantzle_check;
-    si.done_cb = qwantzle_solved;
+    si.user_data = &si; /* what could go wrong? */
+    si.phrase_filter_cb = qwantzle_phrase_filter;
+    si.sentence_cb = qwantzle_solved;
 
     /* The first word of the solution is "I", which is added by
      * qwantzle_solved() so we only have to solve for the remaining letters. */
