@@ -1,4 +1,4 @@
-This package contains an anagram finder and some other programs for constructing words from a restricted pool of letters.
+This package contains an anagram finder and other programs for constructing words and phrases from a restricted pool of letters.
 
 When I was growing up, a local restaurant had this puzzle on their kids' menu:
 
