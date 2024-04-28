@@ -69,7 +69,6 @@ sentence_build(struct sentence_info *si)
     struct sbi_state sbi;
     struct phrase_list *lp; /* list pointer */
     char **dst;
-    size_t buf_size;
 
     if ((si == NULL)
         || (si->pool == NULL)
@@ -82,14 +81,13 @@ sentence_build(struct sentence_info *si)
 
     /* Allocate enough memory for the longest possible sentence:
      * all single-letter words with a space or '\0' after each. */
-    buf_size = 2 * pool_count_all(si->pool) * sizeof(char);
-    sbi.sentence = malloc(buf_size);
+    sbi.sentence = malloc(2 * pool_count_all(si->pool) * sizeof(char));
     if (sbi.sentence == NULL)
         return; /* this could be a problem */
-    memset(sbi.sentence, 0, buf_size);
 
     /* This is the position where we add the next word in the sentence */
     sbi.write_pos = sbi.sentence;
+    *sbi.write_pos = '\0';
 
     sbi.phrase_count = si->phrase_count;
     sbi.phrases = malloc((sbi.phrase_count + 1) * sizeof(char*));
@@ -188,6 +186,7 @@ void sentence_build_inner(struct sentence_info *si,
                 new_sbi.words_used = sbi->words_used + 1;
 
                 *n++ = ' ';
+                *n = '\0'; /* hide remnants of previous attempts */
                 new_sbi.write_pos = n;
 
                 /* Call this function recursively to extend the sentence. */
