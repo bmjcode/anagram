@@ -161,12 +161,7 @@ void sentence_build_inner(struct sentence_info *si,
         /* Remove this phrase's letters from the pool. */
         pool_subtract(si->pool, *curr);
 
-        /* Add this phrase to our sentence.
-         * Copying bytes manually is more efficient than using the standard
-         * library functions, whose execution time grows proportionally with
-         * the length of the destination string. We can safely assume this
-         * won't overflow because something else would have already overflowed
-         * long before we got here. */
+        /* Add this phrase to our sentence. */
         n = sbi->write_pos;
         p = *curr;
         while (*p != '\0')
@@ -191,9 +186,6 @@ void sentence_build_inner(struct sentence_info *si,
                 new_sbi.depth = sbi->depth + 1;
                 new_sbi.words_used = sbi->words_used + 1;
 
-                /* Note that si->sentence may not be null-terminated yet,
-                 * but this is fine since it's only used within this function
-                 * until we exhaust our letter pool. */
                 *n++ = ' ';
                 new_sbi.write_pos = n;
 
