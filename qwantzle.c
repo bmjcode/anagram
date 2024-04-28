@@ -26,7 +26,7 @@
 #include "sentence.h"
 
 static bool qwantzle_check(struct sentence_info *si, char *newest_phrase);
-static void qwantzle_solved(struct sentence_info *si);
+static void qwantzle_solved(char *sentence, void *user_data);
 static void usage(FILE *stream, char *prog_name);
 
 bool
@@ -44,10 +44,12 @@ qwantzle_check(struct sentence_info *si, char *newest_phrase)
 }
 
 void
-qwantzle_solved(struct sentence_info *si)
+qwantzle_solved(char *sentence, void *user_data)
 {
+    (void)user_data;
+
     /* The first word of the solution is "I" */
-    printf("I %s\n", si->sentence);
+    printf("I %s\n", sentence);
 }
 
 void

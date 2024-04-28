@@ -36,25 +36,23 @@ typedef bool (*sentence_check_cb)(struct sentence_info *si,
 /*
  * Callback function when a sentence is completed.
  * If none is specified, the completed sentence is printed to stdout.
+ *
+ * The memory for the 'sentence' parameter is managed by sentence_build(),
+ * which frees it when it returns. If you need the completed sentence longer,
+ * copy it to your own memory.
  */
-typedef void (*sentence_done_cb)(struct sentence_info *si);
+typedef void (*sentence_done_cb)(char *sentence, void *user_data);
 
 /*
  * Structure representing the state of sentence_build().
  *
- * To access the completed sentence, assign a callback function to done_cb.
- * When this function is called, the sentence will be in its si->sentence.
- * Beware that this is the ONLY way to access the sentence, as the 'sentence'
- * member otherwise contains working state that is not necessarily safe for
- * outside use. Its memory is freed when sentence_build() returns, so copy it
- * to your own memory if you need it longer.
+ * To access the completed sentence, assign a callback function to done_cb,
+ * which receives the sentence as one of its parameters.
  */
 struct sentence_info {
     struct phrase_list *phrase_list;
     size_t phrase_count;
     pool_t *pool;
-    char *sentence;
-    size_t max_length; /* used as the buffer size for 'sentence' */
 
     /* Use these to impose constraints on sentence building */
     size_t max_words; /* max number of words in a sentence (0 for unlimited) */

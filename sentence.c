@@ -28,6 +28,7 @@
 
 /* Internal state for sentence_build_inner() */
 struct sbi_state {
+    char *sentence;
     char *write_pos;
     char **phrases;
     size_t phrase_count;
@@ -51,8 +52,6 @@ sentence_info_init(struct sentence_info *si, pool_t *pool)
     si->phrase_list = NULL;
     si->phrase_count = 0;
     si->pool = pool;
-    si->sentence = NULL;
-    si->max_length = 0;
 
     si->max_words = 0;
 
@@ -70,6 +69,7 @@ sentence_build(struct sentence_info *si)
     struct sbi_state sbi;
     struct phrase_list *lp; /* list pointer */
     char **dst;
+    size_t buf_size;
 
     if ((si == NULL)
         || (si->pool == NULL)
@@ -82,14 +82,14 @@ sentence_build(struct sentence_info *si)
 
     /* Allocate enough memory for the longest possible sentence:
      * all single-letter words with a space or '\0' after each. */
-    si->max_length = 2 * pool_count_all(si->pool);
-    si->sentence = malloc(si->max_length * sizeof(char));
-    if (si->sentence == NULL)
+    buf_size = 2 * pool_count_all(si->pool) * sizeof(char);
+    sbi.sentence = malloc(buf_size);
+    if (sbi.sentence == NULL)
         return; /* this could be a problem */
-    memset(si->sentence, 0, si->max_length * sizeof(char));
+    memset(sbi.sentence, 0, buf_size);
 
     /* This is the position where we add the next word in the sentence */
-    sbi.write_pos = si->sentence;
+    sbi.write_pos = sbi.sentence;
 
     sbi.phrase_count = si->phrase_count;
     sbi.phrases = malloc((sbi.phrase_count + 1) * sizeof(char*));
@@ -113,10 +113,8 @@ sentence_build(struct sentence_info *si)
 
     sentence_build_inner(si, &sbi);
 
-    free(si->sentence);
+    free(sbi.sentence);
     free(sbi.phrases);
-    si->sentence = NULL;
-    si->max_length = 0;
 }
 
 void sentence_build_inner(struct sentence_info *si,
@@ -173,14 +171,15 @@ void sentence_build_inner(struct sentence_info *si,
             /* We've completed a sentence! */
             *n = '\0';
             if (si->done_cb == NULL)
-                printf("%s\n", si->sentence);
+                printf("%s\n", sbi->sentence);
             else
-                si->done_cb(si);
+                si->done_cb(sbi->sentence, si->user_data);
         } else if ((si->max_words == 0)
                    || (sbi->words_used + 1 < si->max_words)) {
             struct sbi_state new_sbi;
             size_t buf_size = (sbi->phrase_count + 1) * sizeof(char*);
 
+            new_sbi.sentence = sbi->sentence;
             new_sbi.phrases = malloc(buf_size);
             if (new_sbi.phrases != NULL) {
                 memcpy(new_sbi.phrases, sbi->phrases, buf_size);
