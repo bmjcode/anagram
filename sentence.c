@@ -74,7 +74,7 @@ sentence_build(struct sentence_info *si)
     char **dst;
 
     if ((si == NULL)
-        || (si->pool == NULL)
+        || pool_is_empty(si->pool)
         || (si->phrase_list == NULL)
         || (si->phrase_count == 0))
         return;
