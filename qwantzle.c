@@ -74,12 +74,10 @@ main(int argc, char **argv)
     FILE *fp;
     struct sentence_info si;
     const char *list_path;
-    pool_t pool[POOL_SIZE];
     int opt;
     unsigned short num_threads;
 
-    pool_reset(pool);
-    sentence_info_init(&si, pool);
+    sentence_info_init(&si);
     si.user_data = &si; /* what could go wrong? */
     si.phrase_filter_cb = qwantzle_phrase_filter;
     si.sentence_cb = qwantzle_solved;
@@ -134,7 +132,7 @@ main(int argc, char **argv)
             return 1;
         }
     }
-    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, pool);
+    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, si.pool);
     fclose(fp);
 
     if (si.phrase_list == NULL) {

@@ -46,12 +46,10 @@ main(int argc, char **argv)
     FILE *fp;
     struct sentence_info si;
     const char *list_path;
-    pool_t pool[POOL_SIZE];
     int i, opt;
     unsigned short num_threads;
 
-    pool_reset(pool);
-    sentence_info_init(&si, pool);
+    sentence_info_init(&si);
 
     fp = NULL;
     list_path = NULL;
@@ -89,7 +87,7 @@ main(int argc, char **argv)
         return 1;
     }
     for (i = optind; i < argc; ++i)
-        pool_add(pool, argv[i]);
+        pool_add(si.pool, argv[i]);
 
     if (list_path == NULL)
         list_path = phrase_list_default();
@@ -105,7 +103,7 @@ main(int argc, char **argv)
             return 1;
         }
     }
-    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, pool);
+    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, si.pool);
     fclose(fp);
 
     if (si.phrase_list == NULL) {

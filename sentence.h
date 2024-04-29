@@ -30,9 +30,9 @@
  * sentence_cb, which receives it as one of its parameters.
  */
 struct sentence_info {
+    pool_t pool[POOL_SIZE];
     struct phrase_list *phrase_list;
     size_t phrase_count;
-    pool_t *pool;
     void *user_data; /* arbitrary data passed to callback functions */
 
     /* Use these to impose constraints on sentence building */
@@ -80,7 +80,7 @@ struct sentence_info {
 /*
  * Initialize a sentence_info structure.
  */
-void sentence_info_init(struct sentence_info *si, pool_t *pool);
+void sentence_info_init(struct sentence_info *si);
 
 /*
  * Build a "sentence" using phrases formed from letters in the pool.

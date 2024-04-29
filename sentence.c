@@ -44,14 +44,15 @@ static void *run_thread(void *si);
 #endif /* ENABLE_THREADING */
 
 void
-sentence_info_init(struct sentence_info *si, pool_t *pool)
+sentence_info_init(struct sentence_info *si)
 {
     if (si == NULL)
         return;
 
+    pool_reset(si->pool);
+
     si->phrase_list = NULL;
     si->phrase_count = 0;
-    si->pool = pool;
     si->user_data = NULL;
 
     si->max_words = 0;
@@ -268,12 +269,6 @@ sentence_build_threaded(struct sentence_info *si,
         memcpy(tsi[i], si, sizeof(struct sentence_info));
         tsi[i]->step = num_threads;
         tsi[i]->offset = i;
-
-        /* Each thread needs its own letter pool */
-        tsi[i]->pool = malloc(POOL_SIZE * sizeof(pool_t));
-        if (tsi[i]->pool == NULL)
-            goto cleanup;
-        pool_copy(si->pool, tsi[i]->pool);
     }
 
     /* Start each thread */
@@ -307,11 +302,8 @@ cleanup:
 
     if (tsi != NULL) {
         for (i = 0; i < num_threads; ++i) {
-            if (tsi[i] != NULL) {
-                if (tsi[i]->pool != NULL)
-                    free(tsi[i]->pool);
+            if (tsi[i] != NULL)
                 free(tsi[i]);
-            }
         }
         free(tsi);
     }
