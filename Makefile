@@ -12,6 +12,9 @@ all: anagram is_spellable spellable qwantzle
 anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
+anagwin: anagwin.o letter_pool.o phrase_list.o sentence.o
+	$(CC) -mwindows -o $@ $+ $(LDFLAGS)
+
 is_spellable: is_spellable.o letter_pool.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
