@@ -218,8 +218,8 @@ CreateAnagramWindow(HWND hwnd)
         /* dwExStyle */     0,
         /* lpClassName */   "Edit",
         /* lpWindowName */  NULL,
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_VISIBLE
-                            | WS_TABSTOP | ES_LEFT,
+        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
+                            | ES_LEFT,
         /* X */             0,
         /* Y */             0,
         /* nWidth */        0,
@@ -296,7 +296,7 @@ CreateAnagramWindow(HWND hwnd)
         /* dwExStyle */     0,
         /* lpClassName */   "Button",
         /* lpWindowName */  "Cancel",
-        /* dwStyle */       WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_DISABLED,
+        /* dwStyle */       WS_CHILD | WS_DISABLED | WS_TABSTOP | WS_VISIBLE,
         /* X */             width - BUTTON_WIDTH - INNER_MARGIN,
         /* Y */             rect.top + ROW_Y(1),
         /* nWidth */        BUTTON_WIDTH,
@@ -311,8 +311,8 @@ CreateAnagramWindow(HWND hwnd)
         /* dwExStyle */     0,
         /* lpClassName */   "ListBox",
         /* lpWindowName */  NULL,
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_VISIBLE
-                            | WS_TABSTOP | WS_VSCROLL | LBS_NODATA,
+        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
+                            | WS_VSCROLL | LBS_NODATA,
         /* X */             0,
         /* Y */             0,
         /* nWidth */        0,
@@ -729,12 +729,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     MSG msg = { };
     HWND hwndAnagram;
 
+    /* One thread per core */
     if ((num_threads = strtoul(getenv("NUMBER_OF_PROCESSORS"), NULL, 0)) == 0)
         num_threads = 1;
 
     /* Register the window class */
     wc.lpfnWndProc = AnagramWindowProc;
-    wc.cbWndExtra = DLGWINDOWEXTRA;
     wc.hInstance = hInstance;
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
     wc.lpszClassName = CLASS_NAME;
