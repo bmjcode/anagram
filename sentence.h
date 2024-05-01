@@ -86,6 +86,11 @@ void sentence_info_init(struct sentence_info *si);
  * Build a "sentence" using phrases formed from letters in the pool.
  * For our purposes a sentence is any combination of one or more phrases
  * separated by spaces.
+ *
+ * To run in multiple threads, create a separate struct sentence_info
+ * for each thread. All threads may share the same phrase list (and should
+ * to reduce memory usage). Set si->step to the total number of threads,
+ * and si->offset to the index of the individual thread.
  */
 void sentence_build(struct sentence_info *si);
 
