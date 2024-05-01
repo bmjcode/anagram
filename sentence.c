@@ -27,8 +27,7 @@ struct sbi_state {
     char *write_pos;
     char **phrases;
     size_t phrase_count;
-    size_t depth;
-    size_t words_used; /* counting towards si->max_words */
+    size_t depth; /* recursion depth; also the number of words we've used */
 };
 
 static void sentence_build_inner(struct sentence_info *si,
@@ -71,7 +70,6 @@ sentence_build(struct sentence_info *si)
         return;
 
     sbi.depth = 0;
-    sbi.words_used = 0;
 
     /* Allocate enough memory for the longest possible sentence:
      * all single-letter words with a space or '\0' after each. */
@@ -175,7 +173,7 @@ void sentence_build_inner(struct sentence_info *si,
             else
                 si->sentence_cb(sbi->sentence, si->user_data);
         } else if ((si->max_words == 0)
-                   || (sbi->words_used + 1 < si->max_words)) {
+                   || (sbi->depth + 1 < si->max_words)) {
             struct sbi_state new_sbi;
             size_t buf_size = (sbi->phrase_count + 1) * sizeof(char*);
 
@@ -185,7 +183,6 @@ void sentence_build_inner(struct sentence_info *si,
                 memcpy(new_sbi.phrases, sbi->phrases, buf_size);
                 new_sbi.phrase_count = sbi->phrase_count;
                 new_sbi.depth = sbi->depth + 1;
-                new_sbi.words_used = sbi->words_used + 1;
 
                 *n++ = ' ';
                 *n = '\0'; /* hide remnants of previous attempts */
