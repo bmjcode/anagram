@@ -20,11 +20,122 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef ENABLE_PTHREADS
+#  include <pthread.h>
+#  include <signal.h>
+#endif /* ENABLE_PTHREADS */
+
 #include "letter_pool.h"
 #include "phrase_list.h"
 #include "sentence.h"
 
+static void start(struct sentence_info *si, unsigned short num_threads);
 static void usage(FILE *stream, char *prog_name);
+
+#ifdef ENABLE_PTHREADS
+/* Wrapper to call sentence_build() in a thread */
+static void *run_thread(void *si);
+#endif /* ENABLE_PTHREADS */
+
+void
+start(struct sentence_info *si, unsigned short num_threads)
+{
+#ifdef ENABLE_PTHREADS
+    int s;
+    unsigned short i;
+    pthread_t *thread_id;
+    pthread_attr_t attr;
+    struct sentence_info **tsi;
+
+    if (si == NULL)
+        return;
+
+    if (num_threads <= 0) {
+        fprintf(stderr,
+                "Invalid number of threads: %d\n",
+                num_threads);
+        return;
+    } else if (num_threads == 1) {
+        /* We don't need all this overhead for one thread */
+        sentence_build(si);
+        return;
+    }
+
+    thread_id = NULL;
+    tsi = NULL;
+
+    s = pthread_attr_init(&attr);
+    if (s != 0)
+        goto cleanup;
+
+    thread_id = malloc(num_threads * sizeof(pthread_t));
+    if (thread_id == NULL)
+        goto cleanup;
+
+    /* Create a struct sentence_info for each thread */
+    tsi = malloc(num_threads * sizeof(struct sentence_info*));
+    if (tsi == NULL)
+        goto cleanup;
+
+    for (i = 0; i < num_threads; ++i) {
+        tsi[i] = malloc(sizeof(struct sentence_info));
+        if (tsi[i] == NULL)
+            goto cleanup;
+
+        /* Divide the phrase list among the threads */
+        memcpy(tsi[i], si, sizeof(struct sentence_info));
+        tsi[i]->step = num_threads;
+        tsi[i]->offset = i;
+    }
+
+    /* Start each thread */
+    for (i = 0; i < num_threads; ++i) {
+        s = pthread_create(&thread_id[i],
+                           &attr,
+                           run_thread,
+                           tsi[i]);
+        if (s != 0) {
+            while (--i >= 0)
+                pthread_kill(thread_id[i], SIGTERM);
+            goto cleanup;
+        }
+    }
+
+    /* Wait for each thread to finish */
+    for (i = 0; i < num_threads; ++i) {
+        s = pthread_join(thread_id[i], NULL);
+        if (s != 0) {
+            while (--i >= 0)
+                pthread_kill(thread_id[i], SIGTERM);
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    pthread_attr_destroy(&attr);
+
+    if (thread_id != NULL)
+        free(thread_id);
+
+    if (tsi != NULL) {
+        for (i = 0; i < num_threads; ++i) {
+            if (tsi[i] != NULL)
+                free(tsi[i]);
+        }
+        free(tsi);
+    }
+#else /* ENABLE_PTHREADS */
+    if (num_threads <= 0) {
+        fprintf(stderr,
+                "Invalid number of threads: %d\n",
+                num_threads);
+        return;
+    } else if (num_threads > 1)
+        fprintf(stderr,
+                "Warning: Threading unavailable\n");
+    sentence_build(si);
+#endif /* ENABLE_PTHREADS */
+}
 
 void
 usage(FILE *stream, char *prog_name)
@@ -39,6 +150,15 @@ usage(FILE *stream, char *prog_name)
             "  -w NUM   Limit results to this many words or fewer\n",
             prog_name);
 }
+
+#ifdef ENABLE_PTHREADS
+void *
+run_thread(void *si)
+{
+    sentence_build(si);
+    return NULL;
+}
+#endif /* ENABLE_PTHREADS */
 
 int
 main(int argc, char **argv)
@@ -114,7 +234,7 @@ main(int argc, char **argv)
     }
 
     /* Search for valid sentences */
-    sentence_build_threaded(&si, num_threads);
+    start(&si, num_threads);
 
     phrase_list_free(si.phrase_list);
     return 0;

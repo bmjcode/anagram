@@ -89,13 +89,4 @@ void sentence_info_init(struct sentence_info *si);
  */
 void sentence_build(struct sentence_info *si);
 
-/*
- * Divide sentence_build() across multiple threads.
- *
- * If your system does not support pthreads, this always starts a
- * single thread.
- */
-void sentence_build_threaded(struct sentence_info *si,
-                             unsigned short num_threads);
-
 #endif /* SENTENCE_H */

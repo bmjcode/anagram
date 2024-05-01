@@ -3,14 +3,14 @@ CFLAGS ?= -O3 -fPIC -Wall -Werror
 LDFLAGS ?=
 
 # Enable threading
-CFLAGS += -DENABLE_THREADING -pthread
-LDFLAGS += -pthread
+PTHREAD_CFLAGS = -DENABLE_PTHREADS -pthread
+PTHREAD_LDFLAGS = -pthread
 
 DEFAULT = anagram is_spellable spellable qwantzle
 all: anagram is_spellable spellable qwantzle
 
 anagram: anagram.o letter_pool.o phrase_list.o sentence.o
-	$(CC) -o $@ $+ $(LDFLAGS)
+	$(CC) -o $@ $+ $(LDFLAGS) $(PTHREAD_LDFLAGS)
 
 anagwin: anagwin.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -mwindows -o $@ $+ $(LDFLAGS)
@@ -22,7 +22,13 @@ spellable: spellable.o letter_pool.o phrase_list.o
 	$(CC) -o $@ $+ $(LDFLAGS)
 
 qwantzle: qwantzle.o letter_pool.o phrase_list.o sentence.o
-	$(CC) -o $@ $+ $(LDFLAGS)
+	$(CC) -o $@ $+ $(LDFLAGS) $(PTHREAD_LDFLAGS)
+
+# Special rules for source files using pthreads
+anagram.o: anagram.c
+	$(CC) -c $(CFLAGS) $(PTHREAD_CFLAGS) -o $@ $<
+qwantzle.o: qwantzle.c
+	$(CC) -c $(CFLAGS) $(PTHREAD_CFLAGS) -o $@ $<
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
