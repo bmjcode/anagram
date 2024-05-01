@@ -27,8 +27,22 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
+/* Minimum and maximum limits for words per anagram */
+#define MIN_WORDS 1
+#define MAX_WORDS 15
+
 /* Window class name */
 #define CLASS_NAME "Anagram"
+
+/* Window metrics */
+#define MARGIN_X        8
+#define MARGIN_Y        8
+#define INNER_MARGIN    4
+#define WIDGET_HEIGHT   21
+#define BUTTON_WIDTH    73
+#define LABEL_WIDTH     96
+/* Y position of a row of widgets, including padding */
+#define ROW_Y(nRow)     (MARGIN_Y + (nRow) * (INNER_MARGIN + WIDGET_HEIGHT))
 
 /* Structure to keep track of window elements */
 struct anagram_window {
@@ -41,6 +55,8 @@ struct anagram_window {
     HWND hwndStartButton;
     HWND hwndCancelButton;
     HWND hwndAnagrams;
+    HFONT hFont;
+    WNDPROC EditWndProc;
 
     const char *list_path;
     struct phrase_list *phrase_list;
@@ -50,7 +66,7 @@ struct anagram_window {
     struct phrase_list *anagrams;
     struct phrase_list *last_anagram;
     size_t anagram_count;
-    HANDLE ghMutex;
+    HANDLE hMutex;
 
     struct sentence_info **si;
     DWORD *dwThreadIdArray;
@@ -62,12 +78,17 @@ unsigned short num_threads;
 
 static LRESULT CALLBACK AnagramWindowProc(HWND hwnd, UINT uMsg,
                                           WPARAM wParam, LPARAM lParam);
+static LRESULT CALLBACK AnagramEditWndProc(HWND hwnd, UINT uMsg,
+                                           WPARAM wParam, LPARAM lParam);
 static int CreateAnagramWindow(HWND hwnd);
 static void DestroyAnagramWindow(struct anagram_window *window);
+static void ResizeAnagramWindow(struct anagram_window *window);
+static bool CALLBACK SetFont(HWND hwnd, LPARAM lParam);
 
 static void AnagramStart(struct anagram_window *window);
 static void AnagramCancel(struct anagram_window *window);
 static void AnagramReset(struct anagram_window *window);
+static bool AnagramKeyPress(struct anagram_window *window, WPARAM wParam);
 static DWORD WINAPI RunAnagramThread(LPVOID lpParam);
 
 static void sentence_cb(char *sentence, void *user_data);
@@ -102,29 +123,12 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_KEYDOWN:
-            switch (wParam) {
-                case VK_RETURN:
-                    AnagramStart(window);
-                    return 0;
-
-                case VK_ESCAPE:
-                    AnagramCancel(window);
-                    return 0;
-
-                case VK_CONTROL | 'w':
-                    DestroyWindow(hwnd);
-                    return 0;
-            }
+            if (AnagramKeyPress(window, wParam))
+                return 0;
             break;
 
-        case WM_PAINT:
-            {
-                PAINTSTRUCT ps;
-                HDC hdc = BeginPaint(hwnd, &ps);
-
-                FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_3DFACE + 1));
-                EndPaint(hwnd, &ps);
-            }
+        case WM_SIZE:
+            ResizeAnagramWindow(window);
             return 0;
 
         case WM_DESTROY:
@@ -137,15 +141,50 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 /*
+ * Custom window procedure for the window's Edit controls.
+ */
+LRESULT CALLBACK
+AnagramEditWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    HWND hwndParent = GetParent(hwnd);
+    struct anagram_window *window =
+        (struct anagram_window*) GetWindowLongPtr(hwndParent, GWLP_USERDATA);
+
+    if (window == NULL)
+        goto end;
+
+    switch (uMsg) {
+        case WM_GETDLGCODE:
+            /* Process the Esc and Return keys ourselves */
+            if (lParam != 0) {
+                LPMSG lpMsg = (LPMSG)lParam;
+                switch (lpMsg->wParam) {
+                    case VK_ESCAPE:
+                    case VK_RETURN:
+                        return DLGC_WANTMESSAGE;
+                }
+            }
+            break;
+
+        case WM_KEYDOWN:
+            if (AnagramKeyPress(window, wParam))
+                return 0;
+            break;
+    }
+
+end:
+    return CallWindowProc(window->EditWndProc, hwnd, uMsg, wParam, lParam);
+}
+
+/*
  * Create the window.
- * Processes WM_CREATE for ClockWindowProc().
  * Returns 0 on success, -1 on failure.
  */
 int
 CreateAnagramWindow(HWND hwnd)
 {
     struct anagram_window *window;
-    int width, height;
+    int width;
     RECT rect;
     HINSTANCE hInstance = (HINSTANCE) GetWindowLongPtr(hwnd, GWLP_HINSTANCE);
 
@@ -159,53 +198,45 @@ CreateAnagramWindow(HWND hwnd)
 
     GetClientRect(window->hwnd, &rect);
     width = rect.right - rect.left;
-    height = rect.bottom - rect.top;
-    (void)height;
 
     window->hwndSubjectLabel = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Static",
         /* lpWindowName */  "Find anagrams of:",
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* X */             rect.left + 10,
-        /* Y */             rect.top + 10,
-        /* nWidth */        140,
-        /* nHeight */       20,
+        /* X */             rect.left + MARGIN_X,
+        /* Y */             rect.top + ROW_Y(0),
+        /* nWidth */        LABEL_WIDTH,
+        /* nHeight */       WIDGET_HEIGHT,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndSubjectLabel == NULL)
-        return -1;
 
     window->hwndSubject = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Edit",
         /* lpWindowName */  NULL,
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
-                            | ES_LEFT,
-        /* X */             rect.left + 150,
-        /* Y */             rect.top + 10,
-        /* nWidth */        width - 250,
-        /* nHeight */       20,
+        /* dwStyle */       WS_BORDER | WS_CHILD | WS_VISIBLE
+                            | WS_TABSTOP | ES_LEFT,
+        /* X */             0,
+        /* Y */             0,
+        /* nWidth */        0,
+        /* nHeight */       0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndSubject == NULL)
-        return -1;
 
     window->hwndLimitLabel = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Static",
         /* lpWindowName */  "Using:",
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* X */             rect.left + 10,
-        /* Y */             rect.top + 40,
+        /* X */             rect.left + MARGIN_X,
+        /* Y */             rect.top + ROW_Y(1),
         /* nWidth */        140,
         /* nHeight */       20,
         /* hwndParent */    hwnd,
@@ -213,9 +244,6 @@ CreateAnagramWindow(HWND hwnd)
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndLimitLabel == NULL)
-        return -1;
 
     window->hwndLimit = CreateWindowEx(
         /* dwExStyle */     0,
@@ -223,37 +251,30 @@ CreateAnagramWindow(HWND hwnd)
         /* lpWindowName */  "2",
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT | ES_NUMBER,
-        /* X */             rect.left + 150,
-        /* Y */             rect.top + 40,
+        /* X */             rect.left + LABEL_WIDTH + 2 * INNER_MARGIN,
+        /* Y */             rect.top + ROW_Y(1),
         /* nWidth */        40,
-        /* nHeight */       20,
+        /* nHeight */       WIDGET_HEIGHT,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndLimit == NULL)
-        return -1;
-    SendMessage(window->hwndLimit, EM_SETLIMITTEXT, (WPARAM) 2, 0);
 
     window->hwndLimitLabelAfter = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Static",
         /* lpWindowName */  "word(s) or fewer",
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* X */             rect.left + 194,
-        /* Y */             rect.top + 40,
+        /* X */             rect.left + LABEL_WIDTH + 2 * INNER_MARGIN + 44,
+        /* Y */             rect.top + ROW_Y(1),
         /* nWidth */        140,
-        /* nHeight */       20,
+        /* nHeight */       WIDGET_HEIGHT,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndLimitLabelAfter == NULL)
-        return -1;
 
     window->hwndStartButton = CreateWindowEx(
         /* dwExStyle */     0,
@@ -261,106 +282,161 @@ CreateAnagramWindow(HWND hwnd)
         /* lpWindowName */  "Start",
         /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | BS_DEFPUSHBUTTON,
-        /* X */             width - 90,
-        /* Y */             rect.top + 10,
-        /* nWidth */        80,
-        /* nHeight */       20,
+        /* X */             width - BUTTON_WIDTH - INNER_MARGIN,
+        /* Y */             rect.top + ROW_Y(0),
+        /* nWidth */        BUTTON_WIDTH,
+        /* nHeight */       WIDGET_HEIGHT,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndStartButton == NULL)
-        return -1;
 
     window->hwndCancelButton = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Button",
         /* lpWindowName */  "Cancel",
-        /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE,
-        /* X */             width - 90,
-        /* Y */             rect.top + 40,
-        /* nWidth */        80,
-        /* nHeight */       20,
+        /* dwStyle */       WS_CHILD | WS_VISIBLE | WS_TABSTOP | WS_DISABLED,
+        /* X */             width - BUTTON_WIDTH - INNER_MARGIN,
+        /* Y */             rect.top + ROW_Y(1),
+        /* nWidth */        BUTTON_WIDTH,
+        /* nHeight */       WIDGET_HEIGHT,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
-    if (window->hwndCancelButton == NULL)
-        return -1;
-    EnableWindow(window->hwndCancelButton, FALSE);
 
     window->hwndAnagrams = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "ListBox",
         /* lpWindowName */  NULL,
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
-                            | WS_VSCROLL | LBS_NODATA,
-        /* X */             rect.left,
-        /* Y */             rect.top + 70,
-        /* nWidth */        width,
-        /* nHeight */       rect.bottom - 70,
+        /* dwStyle */       WS_BORDER | WS_CHILD | WS_VISIBLE
+                            | WS_TABSTOP | WS_VSCROLL | LBS_NODATA,
+        /* X */             0,
+        /* Y */             0,
+        /* nWidth */        0,
+        /* nHeight */       0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
 
-    if (window->hwndAnagrams == NULL)
-        return -1;
+    /* Make sure all our widgets exist */
+    if (window->hwndSubjectLabel == NULL)       return -1;
+    if (window->hwndSubject == NULL)            return -1;
+    if (window->hwndLimitLabel == NULL)         return -1;
+    if (window->hwndLimit == NULL)              return -1;
+    if (window->hwndLimitLabelAfter == NULL)    return -1;
+    if (window->hwndStartButton == NULL)        return -1;
+    if (window->hwndCancelButton == NULL)       return -1;
+    if (window->hwndAnagrams == NULL)           return -1;
+
+#if 0
+    /* Override the window procedure for our Edit controls so we can
+     * act on keyboard shortcuts */
+    window->EditWndProc =
+        (WNDPROC) GetWindowLongPtr(window->hwndSubject, GWLP_WNDPROC);
+    SetWindowLongPtr(window->hwndSubject,
+                     GWLP_WNDPROC, (LONG_PTR)AnagramEditWndProc);
+    SetWindowLongPtr(window->hwndLimit,
+                     GWLP_WNDPROC, (LONG_PTR)AnagramEditWndProc);
+#endif
+    /* FIXME: Something here is causing the program to crash. */
+    window->EditWndProc = NULL;
+    (void)AnagramEditWndProc;
+
+    /* Set a comfortable window font */
+    window->hFont = GetStockObject(DEFAULT_GUI_FONT);
+    EnumChildWindows(hwnd, (WNDENUMPROC) SetFont, (LPARAM) window->hFont);
+
+    /* Size and display resizable widgets */
+    ResizeAnagramWindow(window);
+
+    /* Customize widgets */
+    SendMessage(window->hwndLimit, EM_SETLIMITTEXT, (WPARAM) 2, 0);
 
     /* TODO: Support non-default phrase lists */
     window->list_path = phrase_list_default();
     if (window->list_path == NULL)
         return -1;
 
-    /* Everything below here is created when needed by AnagramStart */
-    window->phrase_list = NULL;
-    window->phrase_count = 0;
-
-    window->anagrams = NULL;
-    window->last_anagram = NULL;
-    window->anagram_count = 0;
-    window->ghMutex = NULL;
-
-    window->si = NULL;
-    window->dwThreadIdArray = NULL;
-    window->hThreadArray = NULL;
-    window->running_threads = 0;
-
     SetForegroundWindow(window->hwndSubject);
     return 0;
 }
 
+/*
+ * Destroy the window.
+ * Note DestroyWindow() automatically destroys child windows,
+ * so we only need to clean up our own data.
+ */
 void
 DestroyAnagramWindow(struct anagram_window *window)
 {
+    if (window == NULL)
+        return;
+
     AnagramCancel(window);
     AnagramReset(window);
+    DeleteObject(window->hFont);
 
-    if (window != NULL) {
-        if (window->hwndAnagrams != NULL)
-            DestroyWindow(window->hwndAnagrams);
-        if (window->hwndCancelButton != NULL)
-            DestroyWindow(window->hwndCancelButton);
-        if (window->hwndStartButton != NULL)
-            DestroyWindow(window->hwndStartButton);
-        if (window->hwndLimitLabelAfter != NULL)
-            DestroyWindow(window->hwndLimitLabelAfter);
-        if (window->hwndLimit != NULL)
-            DestroyWindow(window->hwndLimit);
-        if (window->hwndLimitLabel != NULL)
-            DestroyWindow(window->hwndLimitLabel);
-        if (window->hwndSubject != NULL)
-            DestroyWindow(window->hwndSubject);
-        if (window->hwndSubjectLabel != NULL)
-            DestroyWindow(window->hwndSubjectLabel);
-
+    if (window != NULL)
         free(window);
-    }
+}
+
+/*
+ * Resize the window.
+ */
+void
+ResizeAnagramWindow(struct anagram_window *window)
+{
+    RECT rect;
+    int width, height, xSubject, yAnagrams;
+
+    GetClientRect(window->hwnd, &rect);
+    width = rect.right - rect.left;
+    height = rect.bottom - rect.top;
+
+    xSubject = LABEL_WIDTH + 2 * INNER_MARGIN;
+    MoveWindow(window->hwndSubject,
+               rect.left + xSubject,
+               rect.top + ROW_Y(0),
+               width - xSubject - BUTTON_WIDTH - 2 * MARGIN_X,
+               WIDGET_HEIGHT,
+               true);
+
+    yAnagrams = 2 * (MARGIN_Y + WIDGET_HEIGHT) + INNER_MARGIN;
+    MoveWindow(window->hwndAnagrams,
+               rect.left,
+               rect.top + yAnagrams,
+               width - rect.left,
+               height - yAnagrams,
+               true);
+
+    MoveWindow(window->hwndStartButton,
+               width - BUTTON_WIDTH - MARGIN_X,
+               rect.top + ROW_Y(0),
+               BUTTON_WIDTH,
+               WIDGET_HEIGHT,
+               true);
+
+    MoveWindow(window->hwndCancelButton,
+               width - BUTTON_WIDTH - MARGIN_X,
+               rect.top + ROW_Y(1),
+               BUTTON_WIDTH,
+               WIDGET_HEIGHT,
+               true);
+}
+
+/*
+ * Set the window font.
+ */
+bool CALLBACK
+SetFont(HWND hwnd, LPARAM lParam)
+{
+    SendMessage(hwnd, WM_SETFONT, lParam, true);
+    return true;
 }
 
 /*
@@ -396,17 +472,14 @@ AnagramStart(struct anagram_window *window)
     free(subject);
     subject = NULL;
 
-    /* Limit results to this many words or fewer */
+    /* Limit results to a reasonable number of words */
     GetWindowText(window->hwndLimit, max_words_text, 3);
-    max_words = strtoul(max_words_text, NULL, 0);
-    if (max_words < 1)
-        max_words = 1;
-    else if (max_words > 99)
-        max_words = 99;
+    max_words = max(MIN_WORDS,
+                    min(MAX_WORDS, strtoul(max_words_text, NULL, 0)));
 
     /* This allows only one thread to add to window->anagrams at a time */
-    window->ghMutex = CreateMutex(NULL, FALSE, NULL);
-    if (window->ghMutex == NULL)
+    window->hMutex = CreateMutex(NULL, false, NULL);
+    if (window->hMutex == NULL)
         goto cleanup;
 
     window->si = malloc(num_threads * sizeof(struct sentence_info*));
@@ -466,7 +539,7 @@ AnagramStart(struct anagram_window *window)
     }
     window->running_threads = num_threads;
 
-    EnableWindow(window->hwndCancelButton, TRUE);
+    EnableWindow(window->hwndCancelButton, true);
     return;
 
 cleanup:
@@ -486,7 +559,7 @@ AnagramCancel(struct anagram_window *window)
 {
     unsigned short i;
 
-    EnableWindow(window->hwndCancelButton, FALSE);
+    EnableWindow(window->hwndCancelButton, false);
 
     if (window->hThreadArray != NULL) {
         for (i = 0; i < num_threads; ++i) {
@@ -512,9 +585,9 @@ AnagramCancel(struct anagram_window *window)
         window->si = NULL;
     }
 
-    if (window->ghMutex != NULL) {
-        CloseHandle(window->ghMutex);
-        window->ghMutex = NULL;
+    if (window->hMutex != NULL) {
+        CloseHandle(window->hMutex);
+        window->hMutex = NULL;
     }
 
     if (window->phrase_list != NULL) {
@@ -542,6 +615,29 @@ AnagramReset(struct anagram_window *window)
 }
 
 /*
+ * Handle a key press in the anagram window.
+ * Returns true if the key press was handled, false otherwise.
+ */
+bool
+AnagramKeyPress(struct anagram_window *window, WPARAM wParam)
+{
+    switch (wParam) {
+        case VK_RETURN:
+            AnagramStart(window);
+            return true;
+
+        case VK_ESCAPE:
+            AnagramCancel(window);
+            return true;
+
+        case VK_CONTROL | 'W':
+            DestroyWindow(window->hwnd);
+            return true;
+    }
+    return false;
+}
+
+/*
  * Thread function to search for anagrams.
  */
 DWORD WINAPI
@@ -562,12 +658,12 @@ sentence_cb(char *sentence, void *user_data)
     struct anagram_window *window = user_data;
     DWORD dwResult;
 
-    dwResult = WaitForSingleObject(window->ghMutex, INFINITE);
+    dwResult = WaitForSingleObject(window->hMutex, INFINITE);
     switch (dwResult) {
         case WAIT_OBJECT_0:
             /* Our turn to add to the list */
             sentence_cb_inner(sentence, window);
-            ReleaseMutex(window->ghMutex);
+            ReleaseMutex(window->hMutex);
             break;
 
         case WAIT_ABANDONED:
@@ -610,11 +706,11 @@ finished_cb(void *user_data)
     struct anagram_window *window = user_data;
     DWORD dwResult;
 
-    dwResult = WaitForSingleObject(window->ghMutex, INFINITE);
+    dwResult = WaitForSingleObject(window->hMutex, INFINITE);
     switch (dwResult) {
         case WAIT_OBJECT_0:
             --window->running_threads;
-            ReleaseMutex(window->ghMutex);
+            ReleaseMutex(window->hMutex);
             break;
 
         case WAIT_ABANDONED:
@@ -622,7 +718,7 @@ finished_cb(void *user_data)
     }
 
     if (window->running_threads == 0)
-        EnableWindow(window->hwndCancelButton, FALSE);
+        EnableWindow(window->hwndCancelButton, false);
 }
 
 int WINAPI
@@ -638,7 +734,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     /* Register the window class */
     wc.lpfnWndProc = AnagramWindowProc;
+    wc.cbWndExtra = DLGWINDOWEXTRA;
     wc.hInstance = hInstance;
+    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
     wc.lpszClassName = CLASS_NAME;
     RegisterClass(&wc);
 
@@ -667,8 +765,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     /* Run the message loop */
     while (GetMessage(&msg, NULL, 0, 0) > 0) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        /* The IsDialogMessage() check makes tabbing between controls work */
+        if (!IsDialogMessage(hwndAnagram, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
 
     /* Clean up and exit */
