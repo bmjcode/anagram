@@ -35,14 +35,26 @@
 #define CLASS_NAME "Anagram"
 
 /* Window metrics */
-#define MARGIN_X        8
-#define MARGIN_Y        8
-#define INNER_MARGIN    4
-#define WIDGET_HEIGHT   21
-#define BUTTON_WIDTH    73
-#define LABEL_WIDTH     96
-/* Y position of a row of widgets, including padding */
-#define ROW_Y(nRow)     (MARGIN_Y + (nRow) * (INNER_MARGIN + WIDGET_HEIGHT))
+#define WIDGET_MARGIN   11
+#define ROW_SPACING     5
+#define WIDGET_HEIGHT   23
+#define BUTTON_WIDTH    75
+#define LABEL_WIDTH     100
+#define LABEL_SPACING   5
+
+/* Menu items and keyboard shortcuts */
+#define IDM_CLOSE   1
+
+/* Keyboard accelerators */
+#define cAccelAnagram 1
+ACCEL accelAnagram[] = {
+    { FCONTROL | FVIRTKEY, 'W', IDM_CLOSE }
+};
+
+/* Widget labels */
+#define LABEL_SUBJECT       "Find anagrams of:"
+#define LABEL_LIMIT         "Using:"
+#define LABEL_LIMIT_AFTER   "word(s) or fewer"
 
 /* Structure to keep track of window elements */
 struct anagram_window {
@@ -56,20 +68,20 @@ struct anagram_window {
     HWND hwndCancelButton;
     HWND hwndAnagrams;
     HFONT hFont;
-    WNDPROC EditWndProc;
 
+    /* Phrase list data */
     const char *list_path;
     struct phrase_list *phrase_list;
     size_t phrase_count;
 
-    /* These provide storage for hwndAnagrams */
+    /* Storage for hwndAnagrams */
     struct phrase_list *anagrams;
     struct phrase_list *last_anagram;
     size_t anagram_count;
     HANDLE hMutex;
 
+    /* Thread data */
     struct sentence_info **si;
-    DWORD *dwThreadIdArray;
     HANDLE *hThreadArray;
     short running_threads;
 };
@@ -78,17 +90,15 @@ unsigned short num_threads;
 
 static LRESULT CALLBACK AnagramWindowProc(HWND hwnd, UINT uMsg,
                                           WPARAM wParam, LPARAM lParam);
-static LRESULT CALLBACK AnagramEditWndProc(HWND hwnd, UINT uMsg,
-                                           WPARAM wParam, LPARAM lParam);
 static int CreateAnagramWindow(HWND hwnd);
 static void DestroyAnagramWindow(struct anagram_window *window);
-static void ResizeAnagramWindow(struct anagram_window *window);
-static bool CALLBACK SetFont(HWND hwnd, LPARAM lParam);
+static void LayoutAnagramWindow(struct anagram_window *window);
+static void SetAnagramWindowFont(struct anagram_window *window);
+static bool CALLBACK SetFontCallback(HWND hwnd, LPARAM lParam);
 
 static void AnagramStart(struct anagram_window *window);
 static void AnagramCancel(struct anagram_window *window);
 static void AnagramReset(struct anagram_window *window);
-static bool AnagramKeyPress(struct anagram_window *window, WPARAM wParam);
 static DWORD WINAPI RunAnagramThread(LPVOID lpParam);
 
 static void sentence_cb(char *sentence, void *user_data);
@@ -110,25 +120,25 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return CreateAnagramWindow(hwnd);
 
         case WM_COMMAND:
-            if (HIWORD(wParam) == BN_CLICKED) {
-                HWND hwndButton = (HWND)lParam;
-                if (hwndButton == window->hwndStartButton) {
-                    AnagramStart(window);
-                    return 0;
-                } else if (hwndButton == window->hwndCancelButton) {
-                    AnagramCancel(window);
-                    return 0;
+            if (HIWORD(wParam) == BN_CLICKED)
+                switch (LOWORD(wParam)) {
+                    case IDOK:
+                        AnagramStart(window);
+                        return 0;
+                    case IDCANCEL:
+                        AnagramCancel(window);
+                        return 0;
                 }
-            }
-            break;
-
-        case WM_KEYDOWN:
-            if (AnagramKeyPress(window, wParam))
-                return 0;
+            else /* menu selection or keyboard shortcut */
+                switch (LOWORD(wParam)) {
+                    case IDM_CLOSE:
+                        DestroyWindow(hwnd);
+                        return 0;
+                }
             break;
 
         case WM_SIZE:
-            ResizeAnagramWindow(window);
+            LayoutAnagramWindow(window);
             return 0;
 
         case WM_DESTROY:
@@ -136,44 +146,7 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             PostQuitMessage(0);
             return 0;
     }
-
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-
-/*
- * Custom window procedure for the window's Edit controls.
- */
-LRESULT CALLBACK
-AnagramEditWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    HWND hwndParent = GetParent(hwnd);
-    struct anagram_window *window =
-        (struct anagram_window*) GetWindowLongPtr(hwndParent, GWLP_USERDATA);
-
-    if (window == NULL)
-        goto end;
-
-    switch (uMsg) {
-        case WM_GETDLGCODE:
-            /* Process the Esc and Return keys ourselves */
-            if (lParam != 0) {
-                LPMSG lpMsg = (LPMSG)lParam;
-                switch (lpMsg->wParam) {
-                    case VK_ESCAPE:
-                    case VK_RETURN:
-                        return DLGC_WANTMESSAGE;
-                }
-            }
-            break;
-
-        case WM_KEYDOWN:
-            if (AnagramKeyPress(window, wParam))
-                return 0;
-            break;
-    }
-
-end:
-    return CallWindowProc(window->EditWndProc, hwnd, uMsg, wParam, lParam);
 }
 
 /*
@@ -184,8 +157,6 @@ int
 CreateAnagramWindow(HWND hwnd)
 {
     struct anagram_window *window;
-    int width;
-    RECT rect;
     HINSTANCE hInstance = (HINSTANCE) GetWindowLongPtr(hwnd, GWLP_HINSTANCE);
 
     window = malloc(sizeof(struct anagram_window));
@@ -194,129 +165,96 @@ CreateAnagramWindow(HWND hwnd)
     memset(window, 0, sizeof(struct anagram_window));
 
     window->hwnd = hwnd;
-    SetWindowLongPtr(window->hwnd, GWLP_USERDATA, (LONG_PTR) window);
+    SetWindowLongPtr(window->hwnd, GWLP_USERDATA, (LONG_PTR)window);
 
-    GetClientRect(window->hwnd, &rect);
-    width = rect.right - rect.left;
-
+    /* Just create the widgets now and worry about positioning them later */
     window->hwndSubjectLabel = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Static",
-        /* lpWindowName */  "Find anagrams of:",
+        /* lpWindowName */  LABEL_SUBJECT,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* X */             rect.left + MARGIN_X,
-        /* Y */             rect.top + ROW_Y(0),
-        /* nWidth */        LABEL_WIDTH,
-        /* nHeight */       WIDGET_HEIGHT,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndSubject = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Edit",
         /* lpWindowName */  NULL,
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT,
-        /* X */             0,
-        /* Y */             0,
-        /* nWidth */        0,
-        /* nHeight */       0,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndLimitLabel = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Static",
-        /* lpWindowName */  "Using:",
+        /* lpWindowName */  LABEL_LIMIT,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* X */             rect.left + MARGIN_X,
-        /* Y */             rect.top + ROW_Y(1),
-        /* nWidth */        140,
-        /* nHeight */       20,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndLimit = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Edit",
         /* lpWindowName */  "2",
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT | ES_NUMBER,
-        /* X */             rect.left + LABEL_WIDTH + 2 * INNER_MARGIN,
-        /* Y */             rect.top + ROW_Y(1),
-        /* nWidth */        40,
-        /* nHeight */       WIDGET_HEIGHT,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndLimitLabelAfter = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Static",
-        /* lpWindowName */  "word(s) or fewer",
+        /* lpWindowName */  LABEL_LIMIT_AFTER,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* X */             rect.left + LABEL_WIDTH + 2 * INNER_MARGIN + 44,
-        /* Y */             rect.top + ROW_Y(1),
-        /* nWidth */        140,
-        /* nHeight */       WIDGET_HEIGHT,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndStartButton = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Button",
         /* lpWindowName */  "Start",
         /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | BS_DEFPUSHBUTTON,
-        /* X */             width - BUTTON_WIDTH - INNER_MARGIN,
-        /* Y */             rect.top + ROW_Y(0),
-        /* nWidth */        BUTTON_WIDTH,
-        /* nHeight */       WIDGET_HEIGHT,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
-        /* hMenu */         NULL,
+        /* hMenu */         (HMENU)IDOK,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndCancelButton = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Button",
         /* lpWindowName */  "Cancel",
         /* dwStyle */       WS_CHILD | WS_DISABLED | WS_TABSTOP | WS_VISIBLE,
-        /* X */             width - BUTTON_WIDTH - INNER_MARGIN,
-        /* Y */             rect.top + ROW_Y(1),
-        /* nWidth */        BUTTON_WIDTH,
-        /* nHeight */       WIDGET_HEIGHT,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
-        /* hMenu */         NULL,
+        /* hMenu */         (HMENU)IDCANCEL,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
-
     window->hwndAnagrams = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "ListBox",
         /* lpWindowName */  NULL,
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
-                            | WS_VSCROLL | LBS_NODATA,
-        /* X */             0,
-        /* Y */             0,
-        /* nWidth */        0,
-        /* nHeight */       0,
+                            | WS_VSCROLL | LBS_NODATA | LBS_NOINTEGRALHEIGHT,
+        /* coordinates */   0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -333,26 +271,11 @@ CreateAnagramWindow(HWND hwnd)
     if (window->hwndCancelButton == NULL)       return -1;
     if (window->hwndAnagrams == NULL)           return -1;
 
-#if 0
-    /* Override the window procedure for our Edit controls so we can
-     * act on keyboard shortcuts */
-    window->EditWndProc =
-        (WNDPROC) GetWindowLongPtr(window->hwndSubject, GWLP_WNDPROC);
-    SetWindowLongPtr(window->hwndSubject,
-                     GWLP_WNDPROC, (LONG_PTR)AnagramEditWndProc);
-    SetWindowLongPtr(window->hwndLimit,
-                     GWLP_WNDPROC, (LONG_PTR)AnagramEditWndProc);
-#endif
-    /* FIXME: Something here is causing the program to crash. */
-    window->EditWndProc = NULL;
-    (void)AnagramEditWndProc;
-
     /* Set a comfortable window font */
-    window->hFont = GetStockObject(DEFAULT_GUI_FONT);
-    EnumChildWindows(hwnd, (WNDENUMPROC) SetFont, (LPARAM) window->hFont);
+    SetAnagramWindowFont(window);
 
     /* Size and display resizable widgets */
-    ResizeAnagramWindow(window);
+    LayoutAnagramWindow(window);
 
     /* Customize widgets */
     SendMessage(window->hwndLimit, EM_SETLIMITTEXT, (WPARAM) 2, 0);
@@ -386,54 +309,104 @@ DestroyAnagramWindow(struct anagram_window *window)
 }
 
 /*
- * Resize the window.
+ * Lay out the window.
+ * Called when the window is created or resized.
  */
 void
-ResizeAnagramWindow(struct anagram_window *window)
+LayoutAnagramWindow(struct anagram_window *window)
 {
-    RECT rect;
-    int width, height, xSubject, yAnagrams;
+    RECT rect, rectControls, rectButtons, rectLabels, rectInputs;
 
+    /* Window rectangle */
     GetClientRect(window->hwnd, &rect);
-    width = rect.right - rect.left;
-    height = rect.bottom - rect.top;
 
-    xSubject = LABEL_WIDTH + 2 * INNER_MARGIN;
-    MoveWindow(window->hwndSubject,
-               rect.left + xSubject,
-               rect.top + ROW_Y(0),
-               width - xSubject - BUTTON_WIDTH - 2 * MARGIN_X,
-               WIDGET_HEIGHT,
-               true);
+    /* Rectangle for control widgets */
+    rectControls.left = rect.left + WIDGET_MARGIN;
+    rectControls.right = rect.right - WIDGET_MARGIN;
+    rectControls.top = rect.top + WIDGET_MARGIN;
+    rectControls.bottom = rectControls.top
+                          + 2 * WIDGET_HEIGHT   /* number of rows */
+                          + 1 * ROW_SPACING     /* one fewer than above */
+                          + WIDGET_MARGIN;
 
-    yAnagrams = 2 * (MARGIN_Y + WIDGET_HEIGHT) + INNER_MARGIN;
-    MoveWindow(window->hwndAnagrams,
-               rect.left,
-               rect.top + yAnagrams,
-               width - rect.left,
-               height - yAnagrams,
-               true);
+    /* Place the Start and Cancel buttons at the top right */
+    CopyRect(&rectButtons, &rectControls);
+    rectButtons.left = rectControls.right - BUTTON_WIDTH;
 
     MoveWindow(window->hwndStartButton,
-               width - BUTTON_WIDTH - MARGIN_X,
-               rect.top + ROW_Y(0),
-               BUTTON_WIDTH,
-               WIDGET_HEIGHT,
-               true);
+               rectButtons.left, rectButtons.top,
+               BUTTON_WIDTH, WIDGET_HEIGHT, true);
+
+    rectButtons.top += ROW_SPACING + WIDGET_HEIGHT;
 
     MoveWindow(window->hwndCancelButton,
-               width - BUTTON_WIDTH - MARGIN_X,
-               rect.top + ROW_Y(1),
-               BUTTON_WIDTH,
-               WIDGET_HEIGHT,
+               rectButtons.left, rectButtons.top,
+               BUTTON_WIDTH, WIDGET_HEIGHT, true);
+
+    /* Place input controls at the top left */
+    CopyRect(&rectLabels, &rectControls);
+    rectLabels.right = rectLabels.left + LABEL_WIDTH;
+
+    CopyRect(&rectInputs, &rectControls);
+    rectInputs.left = rectLabels.right + LABEL_SPACING;
+    rectInputs.right = rectButtons.left - WIDGET_MARGIN;
+
+    MoveWindow(window->hwndSubjectLabel,
+               rectLabels.left, rectLabels.top,
+               LABEL_WIDTH, WIDGET_HEIGHT, true);
+    MoveWindow(window->hwndSubject,
+               rectInputs.left, rectInputs.top,
+               rectInputs.right - rectInputs.left, WIDGET_HEIGHT, true);
+
+    rectLabels.top += ROW_SPACING + WIDGET_HEIGHT;
+    rectInputs.top += ROW_SPACING + WIDGET_HEIGHT;
+
+    MoveWindow(window->hwndLimitLabel,
+               rectLabels.left, rectLabels.top,
+               LABEL_WIDTH, WIDGET_HEIGHT, true);
+    MoveWindow(window->hwndLimit,
+               rectInputs.left, rectInputs.top,
+               40, WIDGET_HEIGHT, true);
+    MoveWindow(window->hwndLimitLabelAfter,
+               rectInputs.left + 40 + LABEL_SPACING, rectLabels.top,
+               100, WIDGET_HEIGHT, true);
+
+    /* Fill the remaining area with the list of found anagrams */
+    MoveWindow(window->hwndAnagrams,
+               rect.left,
+               rectControls.bottom,
+               rect.right - rect.left,
+               rect.bottom - rectControls.bottom,
                true);
 }
 
 /*
  * Set the window font.
+ * (You'd think there would be an easier way to do this.)
  */
+void
+SetAnagramWindowFont(struct anagram_window *window)
+{
+    NONCLIENTMETRICS ncm;
+
+    memset(&ncm, 0, sizeof(NONCLIENTMETRICS));
+    ncm.cbSize = sizeof(NONCLIENTMETRICS);
+    if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS,
+                             sizeof(NONCLIENTMETRICS), &ncm, 0)) {
+        HFONT hPrevFont = window->hFont;
+        window->hFont = CreateFontIndirect(&ncm.lfMessageFont);
+
+        EnumChildWindows(window->hwnd,
+                         (WNDENUMPROC) SetFontCallback,
+                         (LPARAM) window->hFont);
+
+        if (hPrevFont != NULL)
+            DeleteObject(hPrevFont);
+    }
+}
+
 bool CALLBACK
-SetFont(HWND hwnd, LPARAM lParam)
+SetFontCallback(HWND hwnd, LPARAM lParam)
 {
     SendMessage(hwnd, WM_SETFONT, lParam, true);
     return true;
@@ -487,10 +460,6 @@ AnagramStart(struct anagram_window *window)
         goto cleanup;
     memset(window->si, 0, num_threads * sizeof(struct sentence_info*));
 
-    window->dwThreadIdArray = malloc(num_threads * sizeof(DWORD));
-    if (window->dwThreadIdArray == NULL)
-        goto cleanup;
-
     window->hThreadArray = malloc(num_threads * sizeof(HANDLE));
     if (window->hThreadArray == NULL)
         goto cleanup;
@@ -531,13 +500,13 @@ AnagramStart(struct anagram_window *window)
             RunAnagramThread,           /* thread function name */
             window->si[i],              /* argument to thread function */
             0,                          /* use default creation flags */
-            &window->dwThreadIdArray[i] /* returns the thread identifier */
+            NULL                        /* we don't need the thread ID */
         );
 
         if (window->hThreadArray[i] == NULL)
             goto cleanup;
+        ++window->running_threads;
     }
-    window->running_threads = num_threads;
 
     EnableWindow(window->hwndCancelButton, true);
     return;
@@ -571,11 +540,6 @@ AnagramCancel(struct anagram_window *window)
         window->hThreadArray = NULL;
     }
     window->running_threads = 0;
-
-    if (window->dwThreadIdArray != NULL) {
-        free(window->dwThreadIdArray);
-        window->dwThreadIdArray = NULL;
-    }
 
     if (window->si != NULL) {
         for (i = 0; i < num_threads; ++i)
@@ -612,29 +576,6 @@ AnagramReset(struct anagram_window *window)
 
     window->last_anagram = NULL; /* this was in window->anagrams */
     window->anagram_count = 0;
-}
-
-/*
- * Handle a key press in the anagram window.
- * Returns true if the key press was handled, false otherwise.
- */
-bool
-AnagramKeyPress(struct anagram_window *window, WPARAM wParam)
-{
-    switch (wParam) {
-        case VK_RETURN:
-            AnagramStart(window);
-            return true;
-
-        case VK_ESCAPE:
-            AnagramCancel(window);
-            return true;
-
-        case VK_CONTROL | 'W':
-            DestroyWindow(window->hwnd);
-            return true;
-    }
-    return false;
 }
 
 /*
@@ -675,26 +616,17 @@ sentence_cb(char *sentence, void *user_data)
 void
 sentence_cb_inner(char *sentence, struct anagram_window *window)
 {
-    DWORD dwResult;
-
-    /* We have to provide our own storage because the listbox itself
-     * has limited capacity */
     window->last_anagram = phrase_list_add(window->last_anagram,
                                            sentence,
                                            &window->anagram_count);
-    if (window->anagrams == NULL)
-        window->anagrams = window->last_anagram;
+    if (window->last_anagram == NULL)
+        ExitProcess(1); /* we've run out of memory */
+    else if (window->anagrams == NULL)
+        window->anagrams = window->last_anagram; /* this is the first one */
 
     /* Display the result */
-    dwResult = SendMessage(window->hwndAnagrams, LB_ADDSTRING,
-                           0, (LPARAM) window->last_anagram->phrase);
-    if (dwResult == LB_ERRSPACE) {
-        MessageBox(window->hwnd,
-                   "Listbox is out of space.",
-                   "Error",
-                   MB_OK | MB_ICONERROR);
-        ExitProcess(1);
-    }
+    SendMessage(window->hwndAnagrams, LB_ADDSTRING,
+                0, (LPARAM) window->last_anagram->phrase);
 }
 
 /*
@@ -725,6 +657,7 @@ int WINAPI
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         PSTR lpCmdLine, int nCmdShow)
 {
+    HACCEL hAccTable;
     WNDCLASS wc = { };
     MSG msg = { };
     HWND hwndAnagram;
@@ -732,6 +665,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     /* One thread per core */
     if ((num_threads = strtoul(getenv("NUMBER_OF_PROCESSORS"), NULL, 0)) == 0)
         num_threads = 1;
+
+    /* Create the accelerator table */
+    hAccTable = CreateAcceleratorTable(accelAnagram, cAccelAnagram);
 
     /* Register the window class */
     wc.lpfnWndProc = AnagramWindowProc;
@@ -765,14 +701,16 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     /* Run the message loop */
     while (GetMessage(&msg, NULL, 0, 0) > 0) {
-        /* The IsDialogMessage() check makes tabbing between controls work */
-        if (!IsDialogMessage(hwndAnagram, &msg)) {
+        /* IsDialogMessage() makes tabbing between controls work, and must
+         * go after TranslateAccelerator() to not capture its messages. */
+        if (!(TranslateAccelerator(hwndAnagram, hAccTable, &msg)
+              || IsDialogMessage(hwndAnagram, &msg))) {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
     }
 
     /* Clean up and exit */
-    DestroyWindow(hwndAnagram);
+    DestroyAcceleratorTable(hAccTable);
     return 0;
 }
