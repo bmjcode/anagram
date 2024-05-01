@@ -20,10 +20,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef ENABLE_PTHREADS
+#ifdef ENABLE_PTHREAD
 #  include <pthread.h>
 #  include <signal.h>
-#endif /* ENABLE_PTHREADS */
+#endif /* ENABLE_PTHREAD */
 
 #include "letter_pool.h"
 #include "phrase_list.h"
@@ -32,15 +32,15 @@
 static void start(struct sentence_info *si, unsigned short num_threads);
 static void usage(FILE *stream, char *prog_name);
 
-#ifdef ENABLE_PTHREADS
+#ifdef ENABLE_PTHREAD
 /* Wrapper to call sentence_build() in a thread */
 static void *run_thread(void *si);
-#endif /* ENABLE_PTHREADS */
+#endif /* ENABLE_PTHREAD */
 
 void
 start(struct sentence_info *si, unsigned short num_threads)
 {
-#ifdef ENABLE_PTHREADS
+#ifdef ENABLE_PTHREAD
     int s;
     unsigned short i;
     pthread_t *thread_id;
@@ -124,7 +124,7 @@ cleanup:
         }
         free(tsi);
     }
-#else /* ENABLE_PTHREADS */
+#else /* ENABLE_PTHREAD */
     if (num_threads <= 0) {
         fprintf(stderr,
                 "Invalid number of threads: %d\n",
@@ -134,7 +134,7 @@ cleanup:
         fprintf(stderr,
                 "Warning: Threading unavailable\n");
     sentence_build(si);
-#endif /* ENABLE_PTHREADS */
+#endif /* ENABLE_PTHREAD */
 }
 
 void
@@ -151,14 +151,14 @@ usage(FILE *stream, char *prog_name)
             prog_name);
 }
 
-#ifdef ENABLE_PTHREADS
+#ifdef ENABLE_PTHREAD
 void *
 run_thread(void *si)
 {
     sentence_build(si);
     return NULL;
 }
-#endif /* ENABLE_PTHREADS */
+#endif /* ENABLE_PTHREAD */
 
 int
 main(int argc, char **argv)

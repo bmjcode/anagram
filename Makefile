@@ -3,7 +3,7 @@ CFLAGS ?= -O3 -fPIC -Wall -Werror
 LDFLAGS ?=
 
 # Enable threading
-PTHREAD_CFLAGS = -DENABLE_PTHREADS -pthread
+PTHREAD_CFLAGS = -DENABLE_PTHREAD -pthread
 PTHREAD_LDFLAGS = -pthread
 
 DEFAULT = anagram is_spellable spellable qwantzle
