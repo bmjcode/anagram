@@ -92,7 +92,7 @@ static LRESULT CALLBACK AnagramWindowProc(HWND hwnd, UINT uMsg,
                                           WPARAM wParam, LPARAM lParam);
 static int CreateAnagramWindow(HWND hwnd);
 static void DestroyAnagramWindow(struct anagram_window *window);
-static void LayoutAnagramWindow(struct anagram_window *window);
+static void LayOutAnagramWindow(struct anagram_window *window);
 static void SetAnagramWindowFont(struct anagram_window *window);
 static bool CALLBACK SetFontCallback(HWND hwnd, LPARAM lParam);
 
@@ -138,7 +138,7 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_SIZE:
-            LayoutAnagramWindow(window);
+            LayOutAnagramWindow(window);
             return 0;
 
         case WM_DESTROY:
@@ -173,7 +173,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpClassName */   "Static",
         /* lpWindowName */  LABEL_SUBJECT,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -185,7 +185,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpWindowName */  NULL,
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -196,7 +196,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpClassName */   "Static",
         /* lpWindowName */  LABEL_LIMIT,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -208,7 +208,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpWindowName */  "2",
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT | ES_NUMBER,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -219,7 +219,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpClassName */   "Static",
         /* lpWindowName */  LABEL_LIMIT_AFTER,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -231,7 +231,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpWindowName */  "Start",
         /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | BS_DEFPUSHBUTTON,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         (HMENU)IDOK,
         /* hInstance */     hInstance,
@@ -242,7 +242,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpClassName */   "Button",
         /* lpWindowName */  "Cancel",
         /* dwStyle */       WS_CHILD | WS_DISABLED | WS_TABSTOP | WS_VISIBLE,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         (HMENU)IDCANCEL,
         /* hInstance */     hInstance,
@@ -254,7 +254,7 @@ CreateAnagramWindow(HWND hwnd)
         /* lpWindowName */  NULL,
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | WS_VSCROLL | LBS_NODATA | LBS_NOINTEGRALHEIGHT,
-        /* coordinates */   0, 0, 0, 0,
+        /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
         /* hInstance */     hInstance,
@@ -262,20 +262,21 @@ CreateAnagramWindow(HWND hwnd)
     );
 
     /* Make sure all our widgets exist */
-    if (window->hwndSubjectLabel == NULL)       return -1;
-    if (window->hwndSubject == NULL)            return -1;
-    if (window->hwndLimitLabel == NULL)         return -1;
-    if (window->hwndLimit == NULL)              return -1;
-    if (window->hwndLimitLabelAfter == NULL)    return -1;
-    if (window->hwndStartButton == NULL)        return -1;
-    if (window->hwndCancelButton == NULL)       return -1;
-    if (window->hwndAnagrams == NULL)           return -1;
+    if ((window->hwndSubjectLabel == NULL)
+        || (window->hwndSubject == NULL)
+        || (window->hwndLimitLabel == NULL)
+        || (window->hwndLimit == NULL)
+        || (window->hwndLimitLabelAfter == NULL)
+        || (window->hwndStartButton == NULL)
+        || (window->hwndCancelButton == NULL)
+        || (window->hwndAnagrams == NULL))
+        return -1;
 
     /* Set a comfortable window font */
     SetAnagramWindowFont(window);
 
-    /* Size and display resizable widgets */
-    LayoutAnagramWindow(window);
+    /* Lay out widgets */
+    LayOutAnagramWindow(window);
 
     /* Customize widgets */
     SendMessage(window->hwndLimit, EM_SETLIMITTEXT, (WPARAM) 2, 0);
@@ -302,10 +303,10 @@ DestroyAnagramWindow(struct anagram_window *window)
 
     AnagramCancel(window);
     AnagramReset(window);
-    DeleteObject(window->hFont);
 
-    if (window != NULL)
-        free(window);
+    if (window->hFont != NULL)
+        DeleteObject(window->hFont);
+    free(window);
 }
 
 /*
@@ -313,7 +314,7 @@ DestroyAnagramWindow(struct anagram_window *window)
  * Called when the window is created or resized.
  */
 void
-LayoutAnagramWindow(struct anagram_window *window)
+LayOutAnagramWindow(struct anagram_window *window)
 {
     RECT rect, rectControls, rectButtons, rectLabels, rectInputs;
 
@@ -655,7 +656,7 @@ finished_cb(void *user_data)
 
 int WINAPI
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-        PSTR lpCmdLine, int nCmdShow)
+        LPSTR lpCmdLine, int nCmdShow)
 {
     HACCEL hAccTable;
     WNDCLASS wc = { };
