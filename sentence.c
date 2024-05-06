@@ -99,7 +99,12 @@ sentence_build(struct sentence_info *si)
     for (lp = si->phrase_list, dst = sbi.phrases;
          lp != NULL;
          lp = lp->next) {
-        *dst++ = lp->phrase;
+        /* Filter the list now since we're iterating through it anyway */
+        if ((si->phrase_filter_cb == NULL)
+            || si->phrase_filter_cb(lp->phrase, si->user_data))
+            *dst++ = lp->phrase;
+        else
+            --sbi.phrase_count;
     }
     *dst = NULL;
 
@@ -128,18 +133,12 @@ void sentence_build_inner(struct sentence_info *si,
         return;
 
     /* Filter our working list to remove phrases we can't spell with the
-     * letters in the current pool. If a check_cb function was specified,
-     * also remove phrases that don't pass validation. */
+     * letters in the current pool. */
     for (prev = curr = sbi->phrases; *prev != NULL; ++prev) {
-        if (!pool_can_spell(si->pool, *prev)) {
+        if (pool_can_spell(si->pool, *prev))
+            *curr++ = *prev;
+        else
             --sbi->phrase_count;
-            continue;
-        } else if (!((si->phrase_filter_cb == NULL)
-                   || si->phrase_filter_cb(*prev, si->user_data))) {
-            --sbi->phrase_count;
-            continue;
-        }
-        *curr++ = *prev;
     }
     *curr = NULL;
 
