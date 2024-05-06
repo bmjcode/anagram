@@ -22,20 +22,27 @@
 #include "anagwin.h"
 
 /* Widget labels */
-#define LABEL_SUBJECT       "Find anagrams of:"
-#define LABEL_LIMIT         "Using:"
+#define LABEL_SUBJECT       "Find &anagrams of:"
+#define LABEL_LIMIT         "&Using:"
 #define LABEL_LIMIT_AFTER   "word(s) or fewer"
-#define LABEL_START         "Start"
-#define LABEL_CANCEL        "Cancel"
+#define LABEL_START         "Start"     /* leave accelerator implied */
+#define LABEL_CANCEL        "Cancel"    /* leave accelerator implied */
 
 /* Menu items and keyboard shortcuts */
-#define IDM_CLOSE   1
+#define IDM_CLOSE           101
+#define IDM_FOCUS_SUBJECT   102
+#define IDM_FOCUS_LIMIT     103
 
 /* Keyboard accelerators */
+/* Windows provides IDOK (Return pressed) and IDCANCEL (Esc pressed) */
 ACCEL accel[] = {
-    { FCONTROL | FVIRTKEY, 'W', IDM_CLOSE }
+    { FVIRTKEY | FCONTROL,  'W',    IDM_CLOSE           },
+    { FVIRTKEY | FALT,      'S',    IDOK                },
+    { FVIRTKEY | FALT,      'C',    IDCANCEL            },
+    { FVIRTKEY | FALT,      'A',    IDM_FOCUS_SUBJECT   },
+    { FVIRTKEY | FALT,      'U',    IDM_FOCUS_LIMIT     },
 };
-int cAccel = 1;
+int cAccel = 5;
 
 static LRESULT CALLBACK AnagramWindowProc(HWND hwnd, UINT uMsg,
                                           WPARAM wParam, LPARAM lParam);
@@ -60,22 +67,32 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             return CreateAnagramWindow(hwnd);
 
         case WM_COMMAND:
-            if (HIWORD(wParam) == BN_CLICKED)
-                switch (LOWORD(wParam)) {
-                    case IDOK:
-                        StartAnagramSearch(window);
-                        return 0;
-                    case IDCANCEL:
-                        StopAnagramSearch(window);
-                        return 0;
-                }
-            else /* menu selection or keyboard shortcut */
-                switch (LOWORD(wParam)) {
-                    case IDM_CLOSE:
-                        DestroyWindow(hwnd);
-                        return 0;
-                }
-            break;
+            switch (LOWORD(wParam)) {
+                case IDOK:
+                    StartAnagramSearch(window);
+                    break;
+
+                case IDCANCEL:
+                    StopAnagramSearch(window);
+                    break;
+
+                case IDM_CLOSE:
+                    DestroyWindow(hwnd);
+                    break;
+
+                case IDM_FOCUS_SUBJECT:
+                    SetFocus(window->hwndSubject);
+                    /* select all text */
+                    SendMessage(window->hwndSubject, EM_SETSEL, 0, -1);
+                    break;
+
+                case IDM_FOCUS_LIMIT:
+                    SetFocus(window->hwndLimit);
+                    /* select all text */
+                    SendMessage(window->hwndLimit, EM_SETSEL, 0, -1);
+                    break;
+            }
+            return 0;
 
         case WM_SIZE:
             LayOutAnagramWindow(window);
@@ -226,7 +243,7 @@ CreateAnagramWindow(HWND hwnd)
     if (window->list_path == NULL)
         return -1;
 
-    SetForegroundWindow(window->hwndSubject);
+    SetFocus(window->hwndSubject);
     return 0;
 }
 
