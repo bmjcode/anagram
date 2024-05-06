@@ -25,6 +25,8 @@
 #define LABEL_SUBJECT       "Find anagrams of:"
 #define LABEL_LIMIT         "Using:"
 #define LABEL_LIMIT_AFTER   "word(s) or fewer"
+#define LABEL_START         "Start"
+#define LABEL_CANCEL        "Cancel"
 
 /* Menu items and keyboard shortcuts */
 #define IDM_CLOSE   1
@@ -166,7 +168,7 @@ CreateAnagramWindow(HWND hwnd)
     window->hwndStartButton = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Button",
-        /* lpWindowName */  "Start",
+        /* lpWindowName */  LABEL_START,
         /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | BS_DEFPUSHBUTTON,
         /* pos, size */     0, 0, 0, 0,
@@ -178,7 +180,7 @@ CreateAnagramWindow(HWND hwnd)
     window->hwndCancelButton = CreateWindowEx(
         /* dwExStyle */     0,
         /* lpClassName */   "Button",
-        /* lpWindowName */  "Cancel",
+        /* lpWindowName */  LABEL_CANCEL,
         /* dwStyle */       WS_CHILD | WS_DISABLED | WS_TABSTOP | WS_VISIBLE,
         /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
