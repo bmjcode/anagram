@@ -61,6 +61,19 @@ struct sentence_info {
     bool (*phrase_filter_cb)(char *candidate, void *user_data);
 
     /*
+     * Callback function to indicate we have a new first phrase.
+     * This is called before building any sentences with it.
+     */
+    void (*first_phrase_cb)(char *candidate, void *user_data);
+
+    /*
+     * Callback function to track sentence_build()'s progress.
+     * This is called after all sentences starting with the current
+     * first phrase have been built.
+     */
+    void (*progress_cb)(void *user_data);
+
+    /*
      * Callback function when a sentence is completed.
      * If none is specified, the sentence is printed to stdout.
      *

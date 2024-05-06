@@ -52,6 +52,8 @@ sentence_info_init(struct sentence_info *si)
 
     si->canceled_cb = NULL;
     si->phrase_filter_cb = NULL;
+    si->first_phrase_cb = NULL;
+    si->progress_cb = NULL;
     si->sentence_cb = NULL;
     si->finished_cb = NULL;
 }
@@ -156,6 +158,10 @@ void sentence_build_inner(struct sentence_info *si,
         if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
             break;
 
+        /* If this is the outermost loop, report our new first phrase. */
+        if ((sbi->depth == 0) && (si->first_phrase_cb != NULL))
+            si->first_phrase_cb(*curr, si->user_data);
+
         /* Remove this phrase's letters from the pool. */
         pool_subtract(si->pool, *curr);
 
@@ -196,6 +202,10 @@ void sentence_build_inner(struct sentence_info *si,
 
         /* Restore used letters to the pool for the next cycle. */
         pool_add(si->pool, *curr);
+
+        /* If this is the outermost loop, report our progress. */
+        if ((sbi->depth == 0) && (si->progress_cb != NULL))
+            si->progress_cb(si->user_data);
 
         /* If this is the outermost loop, advance by the number of phrases
          * specified by 'step'. Otherwise, advance to the next phrase. */
