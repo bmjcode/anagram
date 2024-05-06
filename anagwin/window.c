@@ -385,3 +385,33 @@ RegisterAnagramWindowClasses(HINSTANCE hInstance)
     wc.lpszClassName = ANAGWIN_MAIN_CLASS;
     RegisterClass(&wc);
 }
+
+/*
+ * Create the main window menu.
+ */
+HMENU
+CreateAnagramWindowMenu(void)
+{
+    HMENU hMenu;
+    HMENU hMenuFile;
+
+    hMenu = CreateMenu();
+    if (hMenu == NULL)
+        goto cleanup;
+
+    /* Create the File menu */
+    hMenuFile = CreatePopupMenu();
+    if (hMenuFile == NULL)
+        goto cleanup;
+    InsertMenu(hMenuFile, 0, 0, IDM_CLOSE, "E&xit");
+
+    /* Add menus to the menu bar */
+    InsertMenu(hMenu, 0, MF_POPUP, (UINT_PTR) hMenuFile, "&File");
+
+    return hMenu;
+
+cleanup:
+    if (hMenu != NULL)
+        DestroyMenu(hMenu);
+    return NULL;
+}

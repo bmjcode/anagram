@@ -25,14 +25,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 {
     int retval = 0;
     HACCEL hAccTable;
-    MSG msg = { };
+    HMENU hMenu;
     HWND hwndAnagram;
+    MSG msg = { };
 
     hAccTable = NULL;
+    hMenu = NULL;
 
     /* One thread per core */
     if ((num_threads = strtoul(getenv("NUMBER_OF_PROCESSORS"), NULL, 0)) == 0)
         num_threads = 1;
+
+    /* Register window classes */
+    RegisterAnagramWindowClasses(hInstance);
 
     /* Create the accelerator table */
     hAccTable = CreateAcceleratorTable(accel, cAccel);
@@ -41,8 +46,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         goto cleanup;
     }
 
-    /* Register window classes */
-    RegisterAnagramWindowClasses(hInstance);
+    /* Create the main window menu */
+    hMenu = CreateAnagramWindowMenu();
+    if (hMenu == NULL) {
+        retval = 1;
+        goto cleanup;
+    }
 
     /* Create the main window */
     hwndAnagram = CreateWindowEx(
@@ -55,7 +64,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         /* nWidth */        CW_USEDEFAULT,
         /* nHeight */       CW_USEDEFAULT,
         /* hwndParent */    NULL,
-        /* hMenu */         NULL,
+        /* hMenu */         hMenu,
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );

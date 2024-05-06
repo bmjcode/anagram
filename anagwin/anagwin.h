@@ -79,6 +79,7 @@ void ClearAnagramSearchResults(struct anagram_window *window);
 
 /* Implemented in window.c */
 void RegisterAnagramWindowClasses(HINSTANCE hInstance);
+HMENU CreateAnagramWindowMenu(void);
 
 /* Window metrics */
 #define WIDGET_MARGIN   11
