@@ -12,7 +12,8 @@ all: anagram is_spellable spellable qwantzle
 anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -o $@ $+ $(LDFLAGS) $(PTHREAD_LDFLAGS)
 
-anagwin: anagwin.o letter_pool.o phrase_list.o sentence.o
+anagwin: anagwin/anagwin.o anagwin/run.o anagwin/window.o \
+letter_pool.o phrase_list.o sentence.o
 	$(CC) -mwindows -o $@ $+ $(LDFLAGS)
 
 is_spellable: is_spellable.o letter_pool.o
@@ -32,6 +33,9 @@ qwantzle.o: qwantzle.c
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $<
+anagwin/%.o: anagwin/%.c
+	$(CC) -c $(CFLAGS) -I. -o $@ $<
 
 clean:
 	rm -f anagram is_spellable spellable qwantzle *.exe *.o
+	rm -f anagwin/*.o
