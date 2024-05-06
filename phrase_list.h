@@ -23,8 +23,8 @@
 #ifndef PHRASE_LIST_H
 #define PHRASE_LIST_H
 
-/* For pool_t */
-#include "letter_pool.h"
+#include <stdio.h>          /* for FILE */
+#include "letter_pool.h"    /* for pool_t */
 
 /* Path to our default phrase list */
 #define PHRASE_LIST_DEFAULT "web2.txt"
