@@ -361,6 +361,7 @@ RegisterAnagramWindowClasses(HINSTANCE hInstance)
 
     wc.lpfnWndProc = AnagramWindowProc;
     wc.hInstance = hInstance;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
     wc.lpszClassName = ANAGWIN_MAIN_CLASS;
     RegisterClass(&wc);
