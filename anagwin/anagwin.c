@@ -28,9 +28,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     HMENU hMenu;
     HWND hwndAnagram;
     MSG msg = { };
+    INITCOMMONCONTROLSEX iccs;
 
     hAccTable = NULL;
     hMenu = NULL;
+
+    /* Initialize common controls */
+    memset(&iccs, 0, sizeof(INITCOMMONCONTROLSEX));
+    iccs.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    iccs.dwICC = ICC_WIN95_CLASSES;
+    if (!InitCommonControlsEx(&iccs)) {
+        retval = 1;
+        goto cleanup;
+    }
 
     /* One thread per core */
     if ((num_threads = strtoul(getenv("NUMBER_OF_PROCESSORS"), NULL, 0)) == 0)

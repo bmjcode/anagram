@@ -14,7 +14,7 @@ anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 
 anagwin: anagwin/anagwin.o anagwin/run.o anagwin/window.o \
 letter_pool.o phrase_list.o sentence.o
-	$(CC) -mwindows -o $@ $+ $(LDFLAGS)
+	$(CC) -mwindows -o $@ $+ $(LDFLAGS) -lcomctl32
 
 is_spellable: is_spellable.o letter_pool.o
 	$(CC) -o $@ $+ $(LDFLAGS)

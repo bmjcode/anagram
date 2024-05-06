@@ -115,6 +115,7 @@ CreateAnagramWindow(HWND hwnd)
 {
     struct anagram_window *window;
     HINSTANCE hInstance = (HINSTANCE) GetWindowLongPtr(hwnd, GWLP_HINSTANCE);
+    int nStatusParts[] = { 2 * BUTTON_WIDTH, -1 };
 
     window = malloc(sizeof(struct anagram_window));
     if (window == NULL)
@@ -217,6 +218,28 @@ CreateAnagramWindow(HWND hwnd)
         /* hInstance */     hInstance,
         /* lpParam */       NULL
     );
+    window->hwndStatusBar = CreateWindowEx(
+        /* dwExStyle */     0,
+        /* lpClassName */   STATUSCLASSNAME,
+        /* lpWindowName */  NULL,
+        /* dwStyle */       WS_CHILD | WS_VISIBLE,
+        /* pos, size */     0, 0, 0, 0,
+        /* hwndParent */    hwnd,
+        /* hMenu */         NULL,
+        /* hInstance */     hInstance,
+        /* lpParam */       NULL
+    );
+    window->hwndProgressBar = CreateWindowEx(
+        /* dwExStyle */     0,
+        /* lpClassName */   PROGRESS_CLASS,
+        /* lpWindowName */  NULL,
+        /* dwStyle */       WS_CHILD | WS_VISIBLE,
+        /* pos, size */     0, 0, 0, 0,
+        /* hwndParent */    window->hwndStatusBar,
+        /* hMenu */         NULL,
+        /* hInstance */     hInstance,
+        /* lpParam */       NULL
+    );
 
     /* Make sure all our widgets exist */
     if ((window->hwndSubjectLabel == NULL)
@@ -226,7 +249,9 @@ CreateAnagramWindow(HWND hwnd)
         || (window->hwndLimitLabelAfter == NULL)
         || (window->hwndStartButton == NULL)
         || (window->hwndCancelButton == NULL)
-        || (window->hwndAnagrams == NULL))
+        || (window->hwndAnagrams == NULL)
+        || (window->hwndStatusBar == NULL)
+        || (window->hwndProgressBar == NULL))
         return -1;
 
     /* Set a comfortable window font */
@@ -236,7 +261,11 @@ CreateAnagramWindow(HWND hwnd)
     LayOutAnagramWindow(window);
 
     /* Customize widgets */
-    SendMessage(window->hwndLimit, EM_SETLIMITTEXT, (WPARAM) 2, 0);
+    SendMessage(window->hwndLimit,
+                EM_SETLIMITTEXT, (WPARAM) 2, 0);
+    SendMessage(window->hwndStatusBar,
+                SB_SETPARTS, (WPARAM) 2, (LPARAM) nStatusParts);
+    SendMessage(window->hwndProgressBar, PBM_SETSTEP, 1, 0);
 
     /* TODO: Support non-default phrase lists */
     window->list_path = phrase_list_default();
@@ -273,68 +302,95 @@ DestroyAnagramWindow(struct anagram_window *window)
 void
 LayOutAnagramWindow(struct anagram_window *window)
 {
-    RECT rect, rectControls, rectButtons, rectLabels, rectInputs;
+    RECT rect,
+         rcControls,
+         rcButtons,
+         rcLabels,
+         rcInputs,
+         rcStatusBar,
+         rcAnagrams;
 
     /* Window rectangle */
     GetClientRect(window->hwnd, &rect);
 
     /* Rectangle for control widgets */
-    rectControls.left = rect.left + WIDGET_MARGIN;
-    rectControls.right = rect.right - WIDGET_MARGIN;
-    rectControls.top = rect.top + WIDGET_MARGIN;
-    rectControls.bottom = rectControls.top
+    rcControls.left = rect.left + WIDGET_MARGIN;
+    rcControls.right = rect.right - WIDGET_MARGIN;
+    rcControls.top = rect.top + WIDGET_MARGIN;
+    rcControls.bottom = rcControls.top
                           + 2 * WIDGET_HEIGHT   /* number of rows */
                           + 1 * ROW_SPACING     /* one fewer than above */
                           + WIDGET_MARGIN;
 
     /* Place the Start and Cancel buttons at the top right */
-    CopyRect(&rectButtons, &rectControls);
-    rectButtons.left = rectControls.right - BUTTON_WIDTH;
+    CopyRect(&rcButtons, &rcControls);
+    rcButtons.left = rcControls.right - BUTTON_WIDTH;
 
     MoveWindow(window->hwndStartButton,
-               rectButtons.left, rectButtons.top,
+               rcButtons.left, rcButtons.top,
                BUTTON_WIDTH, WIDGET_HEIGHT, true);
 
-    rectButtons.top += ROW_SPACING + WIDGET_HEIGHT;
+    rcButtons.top += ROW_SPACING + WIDGET_HEIGHT;
 
     MoveWindow(window->hwndCancelButton,
-               rectButtons.left, rectButtons.top,
+               rcButtons.left, rcButtons.top,
                BUTTON_WIDTH, WIDGET_HEIGHT, true);
 
     /* Place input controls at the top left */
-    CopyRect(&rectLabels, &rectControls);
-    rectLabels.right = rectLabels.left + LABEL_WIDTH;
+    CopyRect(&rcLabels, &rcControls);
+    rcLabels.right = rcLabels.left + LABEL_WIDTH;
 
-    CopyRect(&rectInputs, &rectControls);
-    rectInputs.left = rectLabels.right + LABEL_SPACING;
-    rectInputs.right = rectButtons.left - WIDGET_MARGIN;
+    CopyRect(&rcInputs, &rcControls);
+    rcInputs.left = rcLabels.right + LABEL_SPACING;
+    rcInputs.right = rcButtons.left - WIDGET_MARGIN;
 
     MoveWindow(window->hwndSubjectLabel,
-               rectLabels.left, rectLabels.top,
+               rcLabels.left, rcLabels.top,
                LABEL_WIDTH, WIDGET_HEIGHT, true);
     MoveWindow(window->hwndSubject,
-               rectInputs.left, rectInputs.top,
-               rectInputs.right - rectInputs.left, WIDGET_HEIGHT, true);
+               rcInputs.left, rcInputs.top,
+               rcInputs.right - rcInputs.left, WIDGET_HEIGHT, true);
 
-    rectLabels.top += ROW_SPACING + WIDGET_HEIGHT;
-    rectInputs.top += ROW_SPACING + WIDGET_HEIGHT;
+    rcLabels.top += ROW_SPACING + WIDGET_HEIGHT;
+    rcInputs.top += ROW_SPACING + WIDGET_HEIGHT;
 
     MoveWindow(window->hwndLimitLabel,
-               rectLabels.left, rectLabels.top,
+               rcLabels.left, rcLabels.top,
                LABEL_WIDTH, WIDGET_HEIGHT, true);
     MoveWindow(window->hwndLimit,
-               rectInputs.left, rectInputs.top,
+               rcInputs.left, rcInputs.top,
                40, WIDGET_HEIGHT, true);
     MoveWindow(window->hwndLimitLabelAfter,
-               rectInputs.left + 40 + LABEL_SPACING, rectLabels.top,
+               rcInputs.left + 40 + LABEL_SPACING, rcLabels.top,
                100, WIDGET_HEIGHT, true);
 
+    /* Put the status bar at the bottom of the window */
+    SendMessage(window->hwndStatusBar, SB_GETRECT, 0, (LPARAM) &rcStatusBar);
+    rcStatusBar.right -= rcStatusBar.left;  /* more useful as width */
+    rcStatusBar.bottom -= rcStatusBar.top;  /* more useful as height */
+    MoveWindow(window->hwndStatusBar,
+               rect.left,           /* window */
+               rcStatusBar.top,     /* status bar */
+               rect.right,          /* window */
+               rcStatusBar.bottom,  /* status bar */
+               true);
+
+    /* Put the status bar inside the progress bar */
+    MoveWindow(window->hwndProgressBar,
+               rcStatusBar.left, rcStatusBar.top,
+               rcStatusBar.right, rcStatusBar.bottom, true);
+
     /* Fill the remaining area with the list of found anagrams */
+    CopyRect(&rcAnagrams, &rect);
+    rcAnagrams.left -= 1;   /* hide the side border */
+    rcAnagrams.right += 1;  /* this one, too */
+    rcAnagrams.top += rcControls.bottom;
+    rcAnagrams.bottom -= rcStatusBar.bottom;
     MoveWindow(window->hwndAnagrams,
-               rect.left,
-               rectControls.bottom,
-               rect.right - rect.left,
-               rect.bottom - rectControls.bottom,
+               rcAnagrams.left,
+               rcControls.bottom,
+               rcAnagrams.right - rcAnagrams.left,
+               rcAnagrams.bottom - rcAnagrams.top,
                true);
 }
 

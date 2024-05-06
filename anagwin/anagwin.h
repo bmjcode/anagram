@@ -23,6 +23,7 @@
 #endif
 #define WINVER 0x400
 #include <windows.h>
+#include <commctrl.h>
 
 #include "letter_pool.h"
 #include "phrase_list.h"
@@ -50,6 +51,8 @@ struct anagram_window {
     HWND hwndStartButton;
     HWND hwndCancelButton;
     HWND hwndAnagrams;
+    HWND hwndStatusBar;
+    HWND hwndProgressBar;
     HFONT hFont;
 
     /* Phrase list data */
@@ -88,5 +91,8 @@ HMENU CreateAnagramWindowMenu(void);
 #define BUTTON_WIDTH    75
 #define LABEL_WIDTH     100
 #define LABEL_SPACING   5
+
+/* Maximum length of a status bar message */
+#define MAX_STATUS 128
 
 #endif /* ANAGWIN_H */

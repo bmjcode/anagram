@@ -22,6 +22,8 @@
 #include "anagwin.h"
 
 static DWORD WINAPI RunAnagramSearchThread(LPVOID lpParam);
+static void first_phrase_cb(char *candidate, void *user_data);
+static void progress_cb(void *user_data);
 static void sentence_cb(char *sentence, void *user_data);
 static void sentence_cb_inner(char *sentence, struct anagram_window *window);
 static void finished_cb(void *user_data);
@@ -49,6 +51,9 @@ StartAnagramSearch(struct anagram_window *window)
     subject = NULL;
     max_words = 0;
     pool_reset(pool);
+
+    /* Reset the progress bar */
+    SendMessage(window->hwndProgressBar, PBM_SETPOS, 0, 0);
 
     /* Add letters to the pool */
     subject_len = GetWindowTextLength(window->hwndSubject) + 1;
@@ -94,6 +99,10 @@ StartAnagramSearch(struct anagram_window *window)
         phrase_list_read(NULL, fp, &window->phrase_count, pool);
     fclose(fp);
 
+    /* Set the progress bar range */
+    SendMessage(window->hwndProgressBar,
+                PBM_SETRANGE32, 0, window->phrase_count);
+
     /* Start threads */
     for (i = 0; i < num_threads; ++i) {
         window->si[i] = malloc(sizeof(struct sentence_info));
@@ -108,6 +117,8 @@ StartAnagramSearch(struct anagram_window *window)
         window->si[i]->max_words = max_words;
         window->si[i]->offset = i;
         window->si[i]->step = num_threads;
+        window->si[i]->first_phrase_cb = first_phrase_cb;
+        window->si[i]->progress_cb = progress_cb;
         window->si[i]->sentence_cb = sentence_cb;
         window->si[i]->finished_cb = finished_cb;
 
@@ -148,6 +159,8 @@ StopAnagramSearch(struct anagram_window *window)
     if (window == NULL)
         return;
 
+    SendMessage(window->hwndStatusBar,
+                SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
     EnableWindow(window->hwndCancelButton, false);
 
     if (window->hThreadArray != NULL) {
@@ -214,6 +227,31 @@ RunAnagramSearchThread(LPVOID lpParam)
 }
 
 /*
+ * Callback to indicate a change in first phrase.
+ */
+void
+first_phrase_cb(char *candidate, void *user_data)
+{
+    struct anagram_window *window = user_data;
+    char buf[MAX_STATUS];
+
+    if (snprintf(buf, MAX_STATUS,
+                 "Finding anagrams starting with %s...", candidate) != 0)
+        SendMessage(window->hwndStatusBar,
+                    SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
+}
+
+/*
+ * Callback to update our sentence-building progress.
+ */
+void
+progress_cb(void *user_data)
+{
+    struct anagram_window *window = user_data;
+    SendMessage(window->hwndProgressBar, PBM_STEPIT, 0, 0);
+}
+
+/*
  * Callback function when a sentence is completed.
  */
 void
@@ -272,6 +310,9 @@ finished_cb(void *user_data)
             return;
     }
 
-    if (window->running_threads == 0)
+    if (window->running_threads == 0) {
+        SendMessage(window->hwndStatusBar,
+                    SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
         EnableWindow(window->hwndCancelButton, false);
+    }
 }
