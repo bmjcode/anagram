@@ -128,7 +128,7 @@ CreateAnagramWindow(HWND hwnd)
     /* Just create the widgets now and worry about positioning them later */
     window->hwndSubjectLabel = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Static",
+        /* lpClassName */   WC_STATIC,
         /* lpWindowName */  LABEL_SUBJECT,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
         /* pos, size */     0, 0, 0, 0,
@@ -139,7 +139,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndSubject = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Edit",
+        /* lpClassName */   WC_EDIT,
         /* lpWindowName */  NULL,
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT,
@@ -151,7 +151,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndLimitLabel = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Static",
+        /* lpClassName */   WC_STATIC,
         /* lpWindowName */  LABEL_LIMIT,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
         /* pos, size */     0, 0, 0, 0,
@@ -162,7 +162,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndLimit = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Edit",
+        /* lpClassName */   WC_EDIT,
         /* lpWindowName */  "2",
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT | ES_NUMBER,
@@ -174,7 +174,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndLimitLabelAfter = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Static",
+        /* lpClassName */   WC_STATIC,
         /* lpWindowName */  LABEL_LIMIT_AFTER,
         /* dwStyle */       WS_CHILD | WS_VISIBLE,
         /* pos, size */     0, 0, 0, 0,
@@ -185,7 +185,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndStartButton = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Button",
+        /* lpClassName */   WC_BUTTON,
         /* lpWindowName */  LABEL_START,
         /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | BS_DEFPUSHBUTTON,
@@ -197,7 +197,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndCancelButton = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "Button",
+        /* lpClassName */   WC_BUTTON,
         /* lpWindowName */  LABEL_CANCEL,
         /* dwStyle */       WS_CHILD | WS_DISABLED | WS_TABSTOP | WS_VISIBLE,
         /* pos, size */     0, 0, 0, 0,
@@ -208,7 +208,7 @@ CreateAnagramWindow(HWND hwnd)
     );
     window->hwndAnagrams = CreateWindowEx(
         /* dwExStyle */     0,
-        /* lpClassName */   "ListBox",
+        /* lpClassName */   WC_LISTBOX,
         /* lpWindowName */  NULL,
         /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | WS_VSCROLL | LBS_NODATA | LBS_NOINTEGRALHEIGHT,
