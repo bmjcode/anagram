@@ -31,8 +31,9 @@ usage(FILE *stream, char *prog_name)
 {
     fprintf(stream,
             "Find words spellable using only the specified letters.\n"
-            "Usage: %s [-h] [-f] [-l PATH] letters\n"
+            "Usage: %s [-h] [-c NUM] [-f] [-l PATH] letters\n"
             "  -h       Display this help message and exit\n"
+            "  -c NUM   Only list words with a specific letter count\n"
             "  -f       Filter mode (read phrase list from stdin)\n"
             "  -l PATH  Override the default phrase list\n",
             prog_name);
@@ -46,17 +47,23 @@ main(int argc, char **argv)
     const char *list_path;
     pool_t pool[POOL_SIZE];
     int i, opt;
+    size_t letter_count;
 
     pool_reset(pool);
+    letter_count = 0;
 
     fp = NULL;
     list_path = NULL;
-    while ((opt = getopt(argc, argv, "hfl:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:fl:")) != -1) {
         switch (opt) {
             case 'h':
                 /* Display help and exit */
                 usage(stdout, argv[0]);
                 return 0;
+            case 'c':
+                /* Require a specific letter count */
+                letter_count = strtoul(optarg, NULL, 0);
+                break;
             case 'f':
                 /* Filter mode */
                 fp = stdin;
@@ -92,16 +99,18 @@ main(int argc, char **argv)
     }
 
     while (fgets(buf, sizeof(buf), fp) != NULL) {
-        char *c = buf;
-        while (*c != '\0') {
+        char *c;
+        size_t lc = 0;
+        for (c = buf; *c != '\0'; ++c) {
             if (isspace(*c)) {
                 /* Limit one word per line */
                 *c = '\0';
                 break;
-            }
-            ++c;
+            } else if (pool_in_alphabet(*c))
+                ++lc;
         }
-        if (pool_can_spell(pool, buf))
+        if (((letter_count == 0) || (lc == letter_count))
+            && pool_can_spell(pool, buf))
             printf("%s\n", buf);
     }
 
