@@ -26,7 +26,6 @@ static void first_phrase_cb(char *candidate, void *user_data);
 static void progress_cb(void *user_data);
 static void sentence_cb(char *sentence, void *user_data);
 static void sentence_cb_inner(char *sentence, struct anagram_window *window);
-static void finished_cb(void *user_data);
 
 /*
  * Start searching for anagrams.
@@ -120,7 +119,6 @@ StartAnagramSearch(struct anagram_window *window)
         window->si[i]->first_phrase_cb = first_phrase_cb;
         window->si[i]->progress_cb = progress_cb;
         window->si[i]->sentence_cb = sentence_cb;
-        window->si[i]->finished_cb = finished_cb;
 
         window->hThreadArray[i] = CreateThread(
             NULL,                       /* default security attributes */
@@ -221,8 +219,29 @@ DWORD WINAPI
 RunAnagramSearchThread(LPVOID lpParam)
 {
     struct sentence_info *si = lpParam;
+    struct anagram_window *window = si->user_data;
+    DWORD dwResult;
 
     sentence_build(si);
+
+    dwResult = WaitForSingleObject(window->hMutex, INFINITE);
+    switch (dwResult) {
+        case WAIT_OBJECT_0:
+            --window->running_threads;
+            ReleaseMutex(window->hMutex);
+            break;
+
+        case WAIT_ABANDONED:
+            return 0; /* this should never happen */
+    }
+
+    if (window->running_threads == 0) {
+        SendMessage(window->hwndStatusBar,
+                    SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
+
+        EnableWindow(window->hwndCancelButton, false);
+    }
+
     return 1; /* ignored */
 }
 
@@ -288,31 +307,4 @@ sentence_cb_inner(char *sentence, struct anagram_window *window)
     /* Display the result */
     SendMessage(window->hwndAnagrams, LB_ADDSTRING,
                 0, (LPARAM) window->last_anagram->phrase);
-}
-
-/*
- * Callback when a search thread finishes.
- */
-void
-finished_cb(void *user_data)
-{
-    struct anagram_window *window = user_data;
-    DWORD dwResult;
-
-    dwResult = WaitForSingleObject(window->hMutex, INFINITE);
-    switch (dwResult) {
-        case WAIT_OBJECT_0:
-            --window->running_threads;
-            ReleaseMutex(window->hMutex);
-            break;
-
-        case WAIT_ABANDONED:
-            return;
-    }
-
-    if (window->running_threads == 0) {
-        SendMessage(window->hwndStatusBar,
-                    SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
-        EnableWindow(window->hwndCancelButton, false);
-    }
 }

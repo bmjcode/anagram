@@ -56,9 +56,29 @@ struct sentence_info {
     /*
      * Callback function to implement a phrase filter.
      * Return true to accept a candidate, false to reject it.
-     * If none is specified, all candidates are accepted.
+     *
+     * This is called once just before sentence-building begins.
+     * You might use it to implement a profanity filter or to only
+     * accept words of a certain length.
+     *
+     * If no filter is specified, all candidates are accepted.
      */
     bool (*phrase_filter_cb)(char *candidate, void *user_data);
+
+    /*
+     * Callback function to implement a phrase check.
+     * Return true to accept a candidate, false to reject it.
+     *
+     * This is called each time a new phrase is about to be added
+     * to the sentence. You might use it to restrict where a particular
+     * phrase may be added to the sentence.
+     *
+     * The sentence parameter contains the sentence in progress before
+     * the candidate phrase is added.
+     *
+     * If no filter is specified, all candidates are accepted.
+     */
+    bool (*phrase_check_cb)(char *candidate, char *sentence, void *user_data);
 
     /*
      * Callback function to indicate we have a new first phrase.
@@ -82,12 +102,6 @@ struct sentence_info {
      * longer, copy it to your own memory.
     */
     void (*sentence_cb)(char *sentence, void *user_data);
-
-    /*
-     * Callback function for just before sentence_build() returns.
-     * Note this function is still called if sentence_build() is canceled.
-     */
-    void (*finished_cb)(void *user_data);
 };
 
 /*

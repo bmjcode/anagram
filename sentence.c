@@ -52,10 +52,10 @@ sentence_info_init(struct sentence_info *si)
 
     si->canceled_cb = NULL;
     si->phrase_filter_cb = NULL;
+    si->phrase_check_cb = NULL;
     si->first_phrase_cb = NULL;
     si->progress_cb = NULL;
     si->sentence_cb = NULL;
-    si->finished_cb = NULL;
 }
 
 void
@@ -109,8 +109,6 @@ sentence_build(struct sentence_info *si)
     *dst = NULL;
 
     sentence_build_inner(si, &sbi);
-    if (si->finished_cb != NULL)
-        si->finished_cb(si->user_data);
 
     free(sbi.sentence);
     free(sbi.phrases);
@@ -157,6 +155,11 @@ void sentence_build_inner(struct sentence_info *si,
         if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
             break;
 
+        /* Check if we can use this phrase here. */
+        if (!((si->phrase_check_cb == NULL)
+              || si->phrase_check_cb(*curr, sbi->sentence, si->user_data)))
+            goto next_phrase;
+
         /* If this is the outermost loop, report our new first phrase. */
         if ((sbi->depth == 0) && (si->first_phrase_cb != NULL))
             si->first_phrase_cb(*curr, si->user_data);
@@ -202,6 +205,7 @@ void sentence_build_inner(struct sentence_info *si,
         /* Restore used letters to the pool for the next cycle. */
         pool_add(si->pool, *curr);
 
+next_phrase:
         /* If this is the outermost loop, report our progress. */
         if ((sbi->depth == 0) && (si->progress_cb != NULL))
             si->progress_cb(si->user_data);

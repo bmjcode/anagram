@@ -30,7 +30,8 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
-static bool qwantzle_phrase_filter(char *candidate, void *user_data);
+static bool qwantzle_phrase_check(char *candidate, char *sentence,
+                                  void *user_data);
 static void qwantzle_solved(char *sentence, void *user_data);
 
 static void start(struct sentence_info *si, unsigned short num_threads);
@@ -42,9 +43,13 @@ static void *run_thread(void *si);
 #endif /* ENABLE_PTHREAD */
 
 bool
-qwantzle_phrase_filter(char *candidate, void *user_data)
+qwantzle_phrase_check(char *candidate, char *sentence, void *user_data)
 {
     struct sentence_info *si = user_data;
+
+    /* We don't really care about the sentence itself here,
+     * only what letters have been used */
+    (void)sentence;
 
     /* The final letter is "w" */
     if (pool_is_empty(si->pool)) {
@@ -200,7 +205,7 @@ main(int argc, char **argv)
 
     sentence_info_init(&si);
     si.user_data = &si; /* what could go wrong? */
-    si.phrase_filter_cb = qwantzle_phrase_filter;
+    si.phrase_check_cb = qwantzle_phrase_check;
     si.sentence_cb = qwantzle_solved;
 
     /* The first word of the solution is "I", which is added by
