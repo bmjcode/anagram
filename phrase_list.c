@@ -98,10 +98,9 @@ phrase_list_read(struct phrase_list *prev,
             continue;
 
         curr = phrase_list_add(prev, buf, count);
-        if (curr == NULL) {
-            phrase_list_free(head);
-            return NULL;
-        } else
+        if (curr == NULL)
+            continue;
+        else
             prev = curr;
 
         /* Save a pointer to the first phrase */
