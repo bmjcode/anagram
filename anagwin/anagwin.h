@@ -36,11 +36,39 @@
 #define MIN_WORDS 1
 #define MAX_WORDS 15
 
-/* Keyboard accelerators */
-extern ACCEL accel[];
-extern int cAccel;
+/* Structure to hold main window elements */
+struct anagram_window;
+
+/* The number of sentence_build() threads to run at once */
+extern unsigned short num_threads;
+
+/* Implemented in run.c */
+void StartAnagramSearch(struct anagram_window *window);
+void StopAnagramSearch(struct anagram_window *window);
+void ClearAnagramSearchResults(struct anagram_window *window);
+
+/* Implemented in window.c */
+void RegisterAnagramWindowClasses(HINSTANCE hInstance);
+HMENU CreateAnagramWindowMenu(void);
+
+/* Window metrics */
+#define WIDGET_MARGIN   11
+#define ROW_SPACING     5
+#define WIDGET_HEIGHT   23
+#define BUTTON_WIDTH    75
+#define LABEL_WIDTH     100
+#define LABEL_SPACING   5
+
+/* Maximum length of a status bar message */
+#define MAX_STATUS 128
 
 /* Main window elements */
+/* This structure is defined here rather than in window.c because it's
+ * more efficient for the functions in run.c to manipulate window elements
+ * directly than to rely on sending messages to the main HWND. If this were
+ * intended for outside use we probably would want to make it opaque for
+ * encapsulation, but since this is all internal application code I think
+ * we can go on the honor system here. */
 struct anagram_window {
     HWND hwnd;
     HWND hwndSubjectLabel;
@@ -72,27 +100,8 @@ struct anagram_window {
     short running_threads;
 };
 
-/* The number of sentence_build() threads to run at once */
-extern unsigned short num_threads;
-
-/* Implemented in run.c */
-void StartAnagramSearch(struct anagram_window *window);
-void StopAnagramSearch(struct anagram_window *window);
-void ClearAnagramSearchResults(struct anagram_window *window);
-
-/* Implemented in window.c */
-void RegisterAnagramWindowClasses(HINSTANCE hInstance);
-HMENU CreateAnagramWindowMenu(void);
-
-/* Window metrics */
-#define WIDGET_MARGIN   11
-#define ROW_SPACING     5
-#define WIDGET_HEIGHT   23
-#define BUTTON_WIDTH    75
-#define LABEL_WIDTH     100
-#define LABEL_SPACING   5
-
-/* Maximum length of a status bar message */
-#define MAX_STATUS 128
+/* Keyboard accelerators */
+extern ACCEL accel[];
+extern int cAccel;
 
 #endif /* ANAGWIN_H */
