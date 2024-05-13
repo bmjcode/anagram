@@ -138,10 +138,10 @@ CreateAnagramWindow(HWND hwnd)
         /* lpParam */       NULL
     );
     window->hwndSubject = CreateWindowEx(
-        /* dwExStyle */     0,
+        /* dwExStyle */     WS_EX_CLIENTEDGE,
         /* lpClassName */   WC_EDIT,
         /* lpWindowName */  NULL,
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
+        /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT,
         /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
@@ -161,10 +161,10 @@ CreateAnagramWindow(HWND hwnd)
         /* lpParam */       NULL
     );
     window->hwndLimit = CreateWindowEx(
-        /* dwExStyle */     0,
+        /* dwExStyle */     WS_EX_CLIENTEDGE,
         /* lpClassName */   WC_EDIT,
         /* lpWindowName */  "2",
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
+        /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE
                             | ES_LEFT | ES_NUMBER,
         /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
@@ -207,11 +207,11 @@ CreateAnagramWindow(HWND hwnd)
         /* lpParam */       NULL
     );
     window->hwndAnagrams = CreateWindowEx(
-        /* dwExStyle */     0,
+        /* dwExStyle */     WS_EX_CLIENTEDGE,
         /* lpClassName */   WC_LISTBOX,
         /* lpWindowName */  NULL,
-        /* dwStyle */       WS_BORDER | WS_CHILD | WS_TABSTOP | WS_VISIBLE
-                            | WS_VSCROLL | LBS_NODATA | LBS_NOINTEGRALHEIGHT,
+        /* dwStyle */       WS_CHILD | WS_TABSTOP | WS_VISIBLE | WS_VSCROLL
+                            | LBS_NODATA | LBS_NOINTEGRALHEIGHT,
         /* pos, size */     0, 0, 0, 0,
         /* hwndParent */    hwnd,
         /* hMenu */         NULL,
@@ -382,8 +382,11 @@ LayOutAnagramWindow(struct anagram_window *window)
 
     /* Fill the remaining area with the list of found anagrams */
     CopyRect(&rcAnagrams, &rect);
-    rcAnagrams.left -= 1;   /* hide the side border */
-    rcAnagrams.right += 1;  /* this one, too */
+    if (IsZoomed(window->hwnd)) {
+        /* Clip the side border so the scrollbar touches the screen edge */
+        rcAnagrams.left -= 2;
+        rcAnagrams.right += 2;
+    }
     rcAnagrams.top += rcControls.bottom;
     rcAnagrams.bottom -= rcStatusBar.bottom;
     MoveWindow(window->hwndAnagrams,
