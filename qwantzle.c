@@ -45,13 +45,65 @@ static void *run_thread(void *si);
 bool
 qwantzle_phrase_check(char *candidate, char *sentence, void *user_data)
 {
+    char *c, *s;
+    size_t c_letters, s_letters;
     struct sentence_info *si = user_data;
 
-    /* We don't really care about the sentence itself here,
-     * only what letters have been used */
-    (void)sentence;
+    /* Both the candidate and sentence may contain multiple words
+     * delimited by spaces, which allows us to consider a complete
+     * phrase as a single unit. What we're doing here is counting
+     * the lengths of their individual words and rejecting candidates
+     * containing words of an inappropriate length. */
+    for (c = candidate, c_letters = 0;
+         /* intentionally left blank */;
+         ++c) {
+        if ((*c == ' ') || (*c == '\0')) {
+            /* We've reached a delimiter */
+            if (c_letters == 0) {
+                /* This isn't much of a word now, is it? */
+                return false;
+            } else if (c_letters == 1) {
+                /* "I" and "a" (case-sensitive) are the only plausible
+                 * single-letters words */
+                if (!((*c == 'I') || (*c == 'a')))
+                    return false;
+            } else if ((c_letters > 11)
+                       || ((c_letters > 8) && (c_letters < 11))) {
+                /* There are no words of this length */
+                return false;
+            } else if ((c_letters == 8) || (c_letters == 11)) {
+                /* The longest words are 8 and 11 letters, respectively,
+                 * and it's implied that there is only one of each */
+                for (s = sentence, s_letters = 0;
+                     /* intentionally left blank */;
+                     ++s) {
+                    if ((*s == ' ') || (*s == '\0')) {
+                        /* We've reached a delimiter */
+                        if (c_letters == s_letters)
+                            /* We've already used a word this length */
+                            return false;
+                        else if (*s == '\0')
+                            /* We're done with this sentence */
+                            break;
+                        else if (*s == ' ')
+                            /* Reset the count for the next word */
+                            s_letters = 0;
+                    } else if (pool_in_alphabet(*s))
+                        /* Increase this word's letter count */
+                        ++s_letters;
+                }
+            }
+            /* The next few lines work just like their counterparts above */
+            if (*c == '\0')
+                break;
+            else if (*c == ' ')
+                c_letters = 0;
+        } else if (pool_in_alphabet(*c))
+            ++c_letters;
+    }
 
-    /* The final letter is "w" */
+    /* The final letter of the sentence is 'w', so make sure we
+     * haven't used up all of ours too early. */
     if (pool_is_empty(si->pool)) {
         if (candidate[strlen(candidate) - 1] != 'w')
             return false;
