@@ -62,6 +62,12 @@ HMENU CreateAnagramWindowMenu(void);
 /* Maximum length of a status bar message */
 #define MAX_STATUS 128
 
+/* Custom window messages */
+#define WM_START_SEARCH     (WM_USER + 1)   /* a search thread has started */
+#define WM_STOP_SEARCH      (WM_USER + 2)   /* a search thread has exited */
+#define WM_CANCEL_SEARCH    (WM_USER + 3)   /* the Cancel button was clicked */
+#define WM_FIRST_PHRASE     (WM_USER + 4)   /* we have a new first phrase */
+
 /* Main window elements */
 /* This structure is defined here rather than in window.c because it's
  * more efficient for the functions in run.c to manipulate window elements

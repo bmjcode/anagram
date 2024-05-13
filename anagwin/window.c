@@ -62,6 +62,7 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     struct anagram_window *window =
         (uMsg == WM_CREATE) ? NULL :
         (struct anagram_window*) GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    char buf[MAX_STATUS]; /* buffer for status bar messages */
 
     switch (uMsg) {
         case WM_CREATE:
@@ -93,6 +94,37 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     SendMessage(window->hwndLimit, EM_SETSEL, 0, -1);
                     break;
             }
+            return 0;
+
+        case WM_START_SEARCH:
+            if (window->running_threads++ == 0)
+                EnableWindow(window->hwndCancelButton, true);
+            return 0;
+
+        case WM_STOP_SEARCH:
+            if (--window->running_threads == 0) {
+                char buf[MAX_STATUS];
+                if (snprintf(buf, MAX_STATUS, "Found %zu anagrams.",
+                             window->anagram_count) != 0)
+                    SendMessage(window->hwndStatusBar,
+                                SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
+
+                EnableWindow(window->hwndCancelButton, false);
+            }
+            return 0;
+
+        case WM_CANCEL_SEARCH:
+            SendMessage(window->hwndStatusBar,
+                        SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
+            EnableWindow(window->hwndCancelButton, false);
+            return 0;
+
+        case WM_FIRST_PHRASE:
+            if (snprintf(buf, MAX_STATUS,
+                         "Finding anagrams starting with %s...",
+                         (char*)lParam) != 0)
+                SendMessage(window->hwndStatusBar,
+                            SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
             return 0;
 
         case WM_SIZE:

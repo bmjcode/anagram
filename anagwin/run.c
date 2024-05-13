@@ -132,10 +132,8 @@ StartAnagramSearch(struct anagram_window *window)
 
         if (window->hThreadArray[i] == NULL)
             goto cleanup;
-        ++window->running_threads;
+        SendMessage(window->hwnd, WM_START_SEARCH, 0, 0);
     }
-
-    EnableWindow(window->hwndCancelButton, true);
     return;
 
 cleanup:
@@ -158,9 +156,7 @@ StopAnagramSearch(struct anagram_window *window)
     if (window == NULL)
         return;
 
-    SendMessage(window->hwndStatusBar,
-                SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
-    EnableWindow(window->hwndCancelButton, false);
+    SendMessage(window->hwnd, WM_CANCEL_SEARCH, 0, 0);
 
     if (window->hThreadArray != NULL) {
         for (i = 0; i < num_threads; ++i) {
@@ -221,31 +217,10 @@ RunAnagramSearchThread(LPVOID lpParam)
 {
     struct sentence_info *si = lpParam;
     struct anagram_window *window = si->user_data;
-    DWORD dwResult;
 
     sentence_build(si);
 
-    dwResult = WaitForSingleObject(window->hMutex, INFINITE);
-    switch (dwResult) {
-        case WAIT_OBJECT_0:
-            --window->running_threads;
-            ReleaseMutex(window->hMutex);
-            break;
-
-        case WAIT_ABANDONED:
-            return 0; /* this should never happen */
-    }
-
-    if (window->running_threads == 0) {
-        char buf[MAX_STATUS];
-        if (snprintf(buf, MAX_STATUS,
-                     "Found %zu anagrams.", window->anagram_count) != 0)
-            SendMessage(window->hwndStatusBar,
-                        SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
-
-        EnableWindow(window->hwndCancelButton, false);
-    }
-
+    SendMessage(window->hwnd, WM_STOP_SEARCH, 0, 0);
     return 1; /* ignored */
 }
 
@@ -256,12 +231,7 @@ void
 first_phrase_cb(char *candidate, void *user_data)
 {
     struct anagram_window *window = user_data;
-    char buf[MAX_STATUS];
-
-    if (snprintf(buf, MAX_STATUS,
-                 "Finding anagrams starting with %s...", candidate) != 0)
-        SendMessage(window->hwndStatusBar,
-                    SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
+    SendMessage(window->hwnd, WM_FIRST_PHRASE, 0, (LPARAM)candidate);
 }
 
 /*
