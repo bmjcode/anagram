@@ -113,6 +113,9 @@ phrase_list_read(struct phrase_list *prev,
     struct phrase_list *head, *curr;
     char buf[64]; /* that should be long enough for most words */
 
+    if (fp == NULL)
+        return NULL;
+
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
         if (!((letter_pool == NULL)
