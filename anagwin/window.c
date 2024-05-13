@@ -97,6 +97,8 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE:
             LayOutAnagramWindow(window);
+            /* The status bar resizes itself */
+            SendMessage(window->hwndStatusBar, WM_SIZE, wParam, lParam);
             return 0;
 
         case WM_DESTROY:
@@ -319,9 +321,9 @@ LayOutAnagramWindow(struct anagram_window *window)
     rcControls.right = rect.right - WIDGET_MARGIN;
     rcControls.top = rect.top + WIDGET_MARGIN;
     rcControls.bottom = rcControls.top
-                          + 2 * WIDGET_HEIGHT   /* number of rows */
-                          + 1 * ROW_SPACING     /* one fewer than above */
-                          + WIDGET_MARGIN;
+                        + 2 * WIDGET_HEIGHT   /* number of rows */
+                        + 1 * ROW_SPACING     /* one fewer than above */
+                        + WIDGET_MARGIN;
 
     /* Place the Start and Cancel buttons at the top right */
     CopyRect(&rcButtons, &rcControls);
@@ -329,13 +331,13 @@ LayOutAnagramWindow(struct anagram_window *window)
 
     MoveWindow(window->hwndStartButton,
                rcButtons.left, rcButtons.top,
-               BUTTON_WIDTH, WIDGET_HEIGHT, true);
+               BUTTON_WIDTH, WIDGET_HEIGHT, false);
 
     rcButtons.top += ROW_SPACING + WIDGET_HEIGHT;
 
     MoveWindow(window->hwndCancelButton,
                rcButtons.left, rcButtons.top,
-               BUTTON_WIDTH, WIDGET_HEIGHT, true);
+               BUTTON_WIDTH, WIDGET_HEIGHT, false);
 
     /* Place input controls at the top left */
     CopyRect(&rcLabels, &rcControls);
@@ -347,39 +349,31 @@ LayOutAnagramWindow(struct anagram_window *window)
 
     MoveWindow(window->hwndSubjectLabel,
                rcLabels.left, rcLabels.top,
-               LABEL_WIDTH, WIDGET_HEIGHT, true);
+               LABEL_WIDTH, WIDGET_HEIGHT, false);
     MoveWindow(window->hwndSubject,
                rcInputs.left, rcInputs.top,
-               rcInputs.right - rcInputs.left, WIDGET_HEIGHT, true);
+               rcInputs.right - rcInputs.left, WIDGET_HEIGHT, false);
 
     rcLabels.top += ROW_SPACING + WIDGET_HEIGHT;
     rcInputs.top += ROW_SPACING + WIDGET_HEIGHT;
 
     MoveWindow(window->hwndLimitLabel,
                rcLabels.left, rcLabels.top,
-               LABEL_WIDTH, WIDGET_HEIGHT, true);
+               LABEL_WIDTH, WIDGET_HEIGHT, false);
     MoveWindow(window->hwndLimit,
                rcInputs.left, rcInputs.top,
-               40, WIDGET_HEIGHT, true);
+               40, WIDGET_HEIGHT, false);
     MoveWindow(window->hwndLimitLabelAfter,
                rcInputs.left + 40 + LABEL_SPACING, rcLabels.top,
-               100, WIDGET_HEIGHT, true);
+               100, WIDGET_HEIGHT, false);
 
-    /* Put the status bar at the bottom of the window */
+    /* Put the progress bar inside the status bar */
     SendMessage(window->hwndStatusBar, SB_GETRECT, 0, (LPARAM) &rcStatusBar);
     rcStatusBar.right -= rcStatusBar.left;  /* more useful as width */
     rcStatusBar.bottom -= rcStatusBar.top;  /* more useful as height */
-    MoveWindow(window->hwndStatusBar,
-               rect.left,           /* window */
-               rcStatusBar.top,     /* status bar */
-               rect.right,          /* window */
-               rcStatusBar.bottom,  /* status bar */
-               true);
-
-    /* Put the status bar inside the progress bar */
     MoveWindow(window->hwndProgressBar,
                rcStatusBar.left, rcStatusBar.top,
-               rcStatusBar.right, rcStatusBar.bottom, true);
+               rcStatusBar.right, rcStatusBar.bottom, false);
 
     /* Fill the remaining area with the list of found anagrams */
     CopyRect(&rcAnagrams, &rect);
@@ -395,7 +389,10 @@ LayOutAnagramWindow(struct anagram_window *window)
                rcControls.bottom,
                rcAnagrams.right - rcAnagrams.left,
                rcAnagrams.bottom - rcAnagrams.top,
-               true);
+               false);
+
+    /* Redraw the entire window */
+    RedrawWindow(window->hwnd, NULL, NULL, RDW_INVALIDATE);
 }
 
 /*
