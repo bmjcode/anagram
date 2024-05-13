@@ -18,7 +18,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
 #include "phrase_list.h"
@@ -28,34 +27,49 @@ phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
 {
     struct phrase_list *next;
     const char *c;
+    size_t i, length, letter_count, digit_count;
 
-    if ((phrase == NULL)
-        || !pool_in_alphabet(phrase[0]))
+    if (phrase == NULL)
+        return NULL;
+
+    /* We need the total length for memory allocation, and the letter and
+     * digit counts to determine if this is a usable phrase */
+    length = 0;
+    letter_count = 0;
+    digit_count = 0;
+
+    /* fgets(), which we use in phrase_list_read(), includes the trailing
+     * newline character. We don't want this, so we treat it as a delimiter,
+     * thus excluding it from our character count. This lets us collect all
+     * our statistics while removing newlines in a single pass. */
+    for (c = phrase; !((*c == '\0') || (*c == '\n')); ++c) {
+        ++length;
+        if (pool_in_alphabet(*c))
+            ++letter_count;
+        else if ((*c >= '0') && (*c <= '9'))
+            ++digit_count;
+    }
+
+    /* Skip phrases with too few letters or too many digits */
+    if ((letter_count == 0) || (digit_count > 0))
         return NULL;
 
     next = malloc(sizeof(struct phrase_list));
     if (next == NULL)
-        return NULL;
-
-    next->length = 0;
+        goto failsafe;
+    next->phrase = malloc((length + 1) * sizeof(char));
+    if (next->phrase == NULL)
+        goto failsafe;
+    next->length = length;
     next->next = NULL;
 
-    /* To avoid excessive linear-time operations we can combine
-     * length calculation and newline removal then cache the result */
-    for (c = phrase; !((*c == '\0') || (*c == '\n')); ++c)
-        ++next->length;
-
-    /* Copy the phrase into our own memory */
-    next->phrase = malloc((next->length + 1) * sizeof(char));
-    if (next->phrase == NULL) {
-        free(next);
-        return NULL;
-    } else if (strncpy(next->phrase, phrase, next->length) == NULL) {
-        free(next->phrase);
-        free(next);
-        return NULL;
-    }
-    next->phrase[next->length] = '\0';
+    /* We can't rely on a safe function like strlcpy() being available,
+     * so we'll just copy the string ourselves. In this case we don't have
+     * to overthink it because we already know where the source string
+     * terminates -- otherwise, we'd still be stuck on strlen(). */
+    for (i = 0; i < length; ++i)
+        next->phrase[i] = phrase[i];
+    next->phrase[length] = '\0';
 
     if (prev != NULL)
         prev->next = next;
@@ -64,6 +78,14 @@ phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
         ++*count;
 
     return next;
+
+failsafe:
+    if (next != NULL) {
+        if (next->phrase != NULL)
+            free(next->phrase);
+        free(next);
+    }
+    return NULL;
 }
 
 void
