@@ -67,6 +67,7 @@ HMENU CreateAnagramWindowMenu(void);
 #define WM_STOP_SEARCH      (WM_USER + 2)   /* a search thread has exited */
 #define WM_CANCEL_SEARCH    (WM_USER + 3)   /* the Cancel button was clicked */
 #define WM_FIRST_PHRASE     (WM_USER + 4)   /* we have a new first phrase */
+#define WM_CLEAR_RESULTS    (WM_USER + 5)   /* clear anagram search results */
 
 /* Main window elements */
 /* This structure is defined here rather than in window.c because it's
@@ -96,11 +97,14 @@ struct anagram_window {
 
     /* Storage for hwndAnagrams */
     struct phrase_list *anagrams;
-    struct phrase_list *last_anagram;
     size_t anagram_count;
-    HANDLE hMutex;
+
+    /* Pointers to items within 'anagrams' */
+    struct phrase_list *last_anagram;
+    struct phrase_list *next_to_display;
 
     /* Thread data */
+    HANDLE hMutex;
     struct sentence_info **si;
     HANDLE *hThreadArray;
     short running_threads;

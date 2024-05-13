@@ -45,6 +45,9 @@ ACCEL accel[] = {
 };
 int cAccel = 5;
 
+/* Timers */
+#define IDT_REFRESH 1
+
 static LRESULT CALLBACK AnagramWindowProc(HWND hwnd, UINT uMsg,
                                           WPARAM wParam, LPARAM lParam);
 static int CreateAnagramWindow(HWND hwnd);
@@ -52,6 +55,8 @@ static void DestroyAnagramWindow(struct anagram_window *window);
 static void LayOutAnagramWindow(struct anagram_window *window);
 static void SetAnagramWindowFont(struct anagram_window *window);
 static bool CALLBACK SetFontCallback(HWND hwnd, LPARAM lParam);
+
+static void UpdateAnagramList(struct anagram_window *window);
 
 /*
  * Process window messages.
@@ -96,19 +101,32 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             return 0;
 
+        case WM_TIMER:
+            switch (wParam) {
+                case IDT_REFRESH:
+                    UpdateAnagramList(window);
+                    break;
+            }
+            return 0;
+
         case WM_START_SEARCH:
-            if (window->running_threads++ == 0)
+            if (window->running_threads++ == 0) {
+                /* The first search thread has started */
                 EnableWindow(window->hwndCancelButton, true);
+                SetTimer(window->hwnd, IDT_REFRESH, 10, (TIMERPROC) NULL);
+            }
             return 0;
 
         case WM_STOP_SEARCH:
             if (--window->running_threads == 0) {
-                char buf[MAX_STATUS];
+                /* The last search thread has exited */
                 if (snprintf(buf, MAX_STATUS, "Found %zu anagrams.",
                              window->anagram_count) != 0)
                     SendMessage(window->hwndStatusBar,
                                 SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
 
+                KillTimer(window->hwnd, IDT_REFRESH);
+                UpdateAnagramList(window);
                 EnableWindow(window->hwndCancelButton, false);
             }
             return 0;
@@ -116,6 +134,9 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         case WM_CANCEL_SEARCH:
             SendMessage(window->hwndStatusBar,
                         SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
+
+            KillTimer(window->hwnd, IDT_REFRESH);
+            UpdateAnagramList(window);
             EnableWindow(window->hwndCancelButton, false);
             return 0;
 
@@ -125,6 +146,11 @@ AnagramWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                          (char*)lParam) != 0)
                 SendMessage(window->hwndStatusBar,
                             SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
+            return 0;
+
+        case WM_CLEAR_RESULTS:
+            SendMessage(window->hwndAnagrams, LB_RESETCONTENT, 0, 0);
+            UpdateAnagramList(window);
             return 0;
 
         case WM_SIZE:
@@ -457,6 +483,45 @@ SetFontCallback(HWND hwnd, LPARAM lParam)
 {
     SendMessage(hwnd, WM_SETFONT, lParam, true);
     return true;
+}
+
+/*
+ * Update the anagram list.
+ *
+ * When a search is running, we call this on a timer to display newly-found
+ * anagrams in batches. We do it this way because sending a window message
+ * for each anagram found would quickly overload the message queue, leaving
+ * our window unresponsive until the search finished.
+ */
+void
+UpdateAnagramList(struct anagram_window *window)
+{
+    if (window->next_to_display == NULL)
+        return;
+
+    /* If a search is in progress, grab the mutex so we can update
+     * window->next_to_display */
+    if (!((window->hMutex == NULL)
+          || (WaitForSingleObject(window->hMutex, INFINITE) == WAIT_OBJECT_0)))
+        return;
+
+    /* Delay redrawing the list until all items have been added
+     * so it doesn't flicker */
+    SendMessage(window->hwndAnagrams, WM_SETREDRAW, false, 0);
+
+    /* Add each anagram that hasn't yet been listed */
+    for (;
+         window->next_to_display != NULL;
+         window->next_to_display = window->next_to_display->next)
+        SendMessage(window->hwndAnagrams, LB_ADDSTRING,
+                    0, (LPARAM) window->next_to_display->phrase);
+
+    SendMessage(window->hwndAnagrams, WM_SETREDRAW, true, 0);
+    /* Not needed: */
+    /* RedrawWindow(window->hwndAnagrams, NULL, NULL, RDW_INVALIDATE); */
+
+    if (window->hMutex != NULL)
+        ReleaseMutex(window->hMutex);
 }
 
 /*

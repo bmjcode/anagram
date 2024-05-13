@@ -198,15 +198,16 @@ ClearAnagramSearchResults(struct anagram_window *window)
     if (window == NULL)
         return;
 
-    SendMessage(window->hwndAnagrams, LB_RESETCONTENT, 0, 0);
+    SendMessage(window->hwnd, WM_CLEAR_RESULTS, 0, 0);
 
     if (window->anagrams != NULL) {
         phrase_list_free(window->anagrams);
         window->anagrams = NULL;
     }
-
-    window->last_anagram = NULL; /* this was in window->anagrams */
     window->anagram_count = 0;
+
+    window->last_anagram = NULL;
+    window->next_to_display = NULL;
 }
 
 /*
@@ -230,8 +231,12 @@ RunAnagramSearchThread(LPVOID lpParam)
 void
 first_phrase_cb(char *candidate, void *user_data)
 {
+    /* FIXME: This is sending too many window messages, which makes
+     * the window unresponsive while sentence_build() is running. */
+#if 0
     struct anagram_window *window = user_data;
     SendMessage(window->hwnd, WM_FIRST_PHRASE, 0, (LPARAM)candidate);
+#endif
 }
 
 /*
@@ -253,6 +258,7 @@ sentence_cb(char *sentence, void *user_data)
     struct anagram_window *window = user_data;
     DWORD dwResult;
 
+    /* Grab the mutex so we can update window->last_anagram */
     dwResult = WaitForSingleObject(window->hMutex, INFINITE);
     switch (dwResult) {
         case WAIT_OBJECT_0:
@@ -278,7 +284,7 @@ sentence_cb_inner(char *sentence, struct anagram_window *window)
     else if (window->anagrams == NULL)
         window->anagrams = window->last_anagram; /* this is the first one */
 
-    /* Display the result */
-    SendMessage(window->hwndAnagrams, LB_ADDSTRING,
-                0, (LPARAM) window->last_anagram->phrase);
+    /* See UpdateAnagramList() in window.c for how results get displayed */
+    if (window->next_to_display == NULL)
+        window->next_to_display = window->last_anagram;
 }
