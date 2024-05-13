@@ -236,8 +236,11 @@ RunAnagramSearchThread(LPVOID lpParam)
     }
 
     if (window->running_threads == 0) {
-        SendMessage(window->hwndStatusBar,
-                    SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) NULL);
+        char buf[MAX_STATUS];
+        if (snprintf(buf, MAX_STATUS,
+                     "Found %zu anagrams.", window->anagram_count) != 0)
+            SendMessage(window->hwndStatusBar,
+                        SB_SETTEXT, MAKEWPARAM(1, 0), (LPARAM) buf);
 
         EnableWindow(window->hwndCancelButton, false);
     }
