@@ -15,44 +15,58 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "phrase_list.h"
 
-struct phrase_list *
-phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
+size_t
+phrase_filter_default(char *candidate, void *user_data)
 {
-    struct phrase_list *next;
     const char *c;
-    size_t i, length, letter_count, digit_count;
+    size_t length, letter_count;
 
-    if (phrase == NULL)
-        return NULL;
+    if (candidate == NULL)
+        return 0;
 
-    /* We need the total length for memory allocation, and the letter and
-     * digit counts to determine if this is a usable phrase */
+    /* We need the total length for memory allocation, and the letter count
+     * to determine if this is a usable phrase. */
     length = 0;
     letter_count = 0;
-    digit_count = 0;
 
     /* fgets(), which we use in phrase_list_read(), includes the trailing
      * newline character. We don't want this, so we treat it as a delimiter,
-     * thus excluding it from our character count. This lets us collect all
-     * our statistics while removing newlines in a single pass. */
-    for (c = phrase; !((*c == '\0') || (*c == '\n')); ++c) {
-        ++length;
+     * thus excluding it from our character count. This lets us combine
+     * measurements, sanity checks, and newline removal into a single pass. */
+    for (c = candidate; !((*c == '\0') || (*c == '\n')); ++c) {
+        /* This is the fastest order of operations if most characters in
+         * the phrase are letters, as should usually be the case. */
         if (pool_in_alphabet(*c))
             ++letter_count;
-        else if ((*c >= '0') && (*c <= '9'))
-            ++digit_count;
+        else if (phrase_cannot_include(*c))
+            return 0;
+        ++length;
     }
 
-    /* Skip phrases with too few letters or too many digits */
-    if ((letter_count == 0) || (digit_count > 0))
-        return NULL;
+    /* Reject phrases with too few letters. */
+    if ((letter_count == 0) || (length - letter_count > letter_count))
+        return 0;
+
+    /* If we made it this far, accept the phrase. */
+    return length;
+}
+
+struct phrase_list *
+phrase_list_add(struct phrase_list *prev,
+                const char *phrase, size_t length, size_t *count)
+{
+    struct phrase_list *next;
+    size_t i;
+
+    next = NULL;
+    if ((phrase == NULL) || (length == 0))
+        goto failsafe;
 
     next = malloc(sizeof(struct phrase_list));
     if (next == NULL)
@@ -64,9 +78,7 @@ phrase_list_add(struct phrase_list *prev, const char *phrase, size_t *count)
     next->next = NULL;
 
     /* We can't rely on a safe function like strlcpy() being available,
-     * so we'll just copy the string ourselves. In this case we don't have
-     * to overthink it because we already know where the source string
-     * terminates -- otherwise, we'd still be stuck on strlen(). */
+     * so we'll just copy the string ourselves. */
     for (i = 0; i < length; ++i)
         next->phrase[i] = phrase[i];
     next->phrase[length] = '\0';
@@ -110,11 +122,26 @@ phrase_list_read(struct phrase_list *prev,
                  size_t *count,
                  pool_t *letter_pool)
 {
+    return phrase_list_read_filtered(prev, fp, count, letter_pool,
+                                     phrase_filter_default, NULL);
+}
+
+struct phrase_list *
+phrase_list_read_filtered(struct phrase_list *prev,
+                          FILE *fp,
+                          size_t *count,
+                          pool_t *letter_pool,
+                          phrase_filter_cb phrase_filter,
+                          void *user_data)
+{
     struct phrase_list *head, *curr;
     char buf[64]; /* that should be long enough for most words */
+    size_t length;
 
     if (fp == NULL)
         return NULL;
+    else if (phrase_filter == NULL)
+        phrase_filter = phrase_filter_default;
 
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -122,7 +149,11 @@ phrase_list_read(struct phrase_list *prev,
               || pool_can_spell(letter_pool, buf)))
             continue;
 
-        curr = phrase_list_add(prev, buf, count);
+        length = phrase_filter(buf, user_data);
+        if (length == 0)
+            continue;
+
+        curr = phrase_list_add(prev, buf, length, count);
         if (curr == NULL)
             continue;
         else

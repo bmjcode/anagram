@@ -278,6 +278,7 @@ sentence_cb_inner(char *sentence, struct anagram_window *window)
 {
     window->last_anagram = phrase_list_add(window->last_anagram,
                                            sentence,
+                                           strlen(sentence),
                                            &window->anagram_count);
     if (window->last_anagram == NULL)
         ExitProcess(1); /* we've run out of memory */

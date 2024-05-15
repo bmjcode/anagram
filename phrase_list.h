@@ -27,7 +27,9 @@
 #ifndef PHRASE_LIST_H
 #define PHRASE_LIST_H
 
+#include <ctype.h>          /* for is*() */
 #include <stdio.h>          /* for FILE */
+
 #include "letter_pool.h"    /* for pool_t */
 
 /* Path to our default phrase list */
@@ -43,13 +45,36 @@ struct phrase_list {
 };
 
 /*
+ * Prototype for a phrase filter function.
+ *
+ * The phrase filter sanitizes candidate phrases and determines whether
+ * they are suitable for constructing anagrams. The default phrase filter
+ * is good for most applications, but you can define your own to implement
+ * more complex rules like only accepting phrases of a certain length.
+ *
+ * If the candidate phrase is acceptable, this should return its length
+ * excluding the trailing '\0' a la strlen(). Otherwise, it should return 0.
+ */
+typedef size_t (*phrase_filter_cb)(char *candidate, void *user_data);
+
+/*
+ * The default phrase filter.
+ *
+ * This checks that phrases contain at least one letter and no digits.
+ * It allows spaces and punctuation so long as they make up no more than
+ * half the characters. It also removes trailing newlines.
+ */
+size_t phrase_filter_default(char *candidate, void *user_data);
+
+/*
  * Add a phrase to a list.
  *
  * If prev is NULL, this starts a new list.
  * Returns a pointer to the newly added phrase.
  */
 struct phrase_list *phrase_list_add(struct phrase_list *prev,
-                                    const char *phrase, size_t *count);
+                                    const char *phrase, size_t length,
+                                    size_t *count);
 
 /*
  * Free memory used by a phrase list.
@@ -74,10 +99,32 @@ struct phrase_list *phrase_list_read(struct phrase_list *prev,
                                      pool_t *letter_pool);
 
 /*
+ * The same as above, but using your custom phrase filter instead of
+ * the default.
+ *
+ * The 'user_data' parameter is arbitrary data passed directly to the
+ * filter function.
+ */
+struct phrase_list *phrase_list_read_filtered(struct phrase_list *prev,
+                                              FILE *fp,
+                                              size_t *count,
+                                              pool_t *letter_pool,
+                                              phrase_filter_cb phrase_filter,
+                                              void *user_data);
+
+/*
  * Return the path to our default phrase list.
  *
  * The return value is a static string. Don't free it!
  */
 const char *phrase_list_default(void);
+
+/*
+ * Use this in your phrase filter to identify non-alphabetic characters
+ * that cannot be included in a phrase. Phrases that do contain such
+ * characters should be rejected immediately.
+ */
+#define phrase_cannot_include(c) \
+        (iscntrl(c) || !(((c) == ' ') || ispunct(c)))
 
 #endif /* PHRASE_LIST_H */

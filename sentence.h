@@ -61,18 +61,6 @@ struct sentence_info {
     bool (*canceled_cb)(void *user_data);
 
     /*
-     * Callback function to implement a phrase filter.
-     * Return true to accept a candidate, false to reject it.
-     *
-     * This is called once just before sentence-building begins.
-     * You might use it to implement a profanity filter or to only
-     * accept words of a certain length.
-     *
-     * If no filter is specified, all candidates are accepted.
-     */
-    bool (*phrase_filter_cb)(char *candidate, void *user_data);
-
-    /*
      * Callback function to implement a phrase check.
      * Return true to accept a candidate, false to reject it.
      *

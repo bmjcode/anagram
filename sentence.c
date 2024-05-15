@@ -51,7 +51,6 @@ sentence_info_init(struct sentence_info *si)
     si->offset = 0;
 
     si->canceled_cb = NULL;
-    si->phrase_filter_cb = NULL;
     si->phrase_check_cb = NULL;
     si->first_phrase_cb = NULL;
     si->progress_cb = NULL;
@@ -98,19 +97,14 @@ sentence_build(struct sentence_info *si)
     for (lp = si->phrase_list, dst = sbi.phrases;
          lp != NULL;
          lp = lp->next) {
-        /* Filter the list now since we're iterating through it anyway */
-        if ((si->phrase_filter_cb == NULL)
-            || si->phrase_filter_cb(lp->phrase, si->user_data)) {
-            *dst++ = lp->phrase;
-            /* Did I say our worst case was all single-letter words?
-             * I forgot to mention that phrases can include non-alphabetic
-             * characters like spaces and punctuation. To play it safe,
-             * let's leave enough space to fit all of them at once. */
-            for (i = 0; i < lp->length; ++i)
-                if (!pool_in_alphabet(lp->phrase[i]))
-                    ++buf_length;
-        } else
-            --sbi.phrase_count;
+        *dst++ = lp->phrase;
+        /* Did I say our worst case was all single-letter words?
+         * I forgot to mention that phrases can include non-alphabetic
+         * characters like spaces and punctuation. To play it safe,
+         * let's leave enough space to fit all of them at once. */
+        for (i = 0; i < lp->length; ++i)
+            if (!pool_in_alphabet(lp->phrase[i]))
+                ++buf_length;
     }
     *dst = NULL;
 
