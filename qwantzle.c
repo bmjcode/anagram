@@ -30,6 +30,7 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
+static size_t qwantzle_phrase_filter(char *candidate, void *user_data);
 static bool qwantzle_phrase_check(char *candidate, char *sentence,
                                   void *user_data);
 static void qwantzle_solved(char *sentence, void *user_data);
@@ -42,82 +43,85 @@ static void usage(FILE *stream, char *prog_name);
 static void *run_thread(void *si);
 #endif /* ENABLE_PTHREAD */
 
+#define isdelim(c) (((c) == ' ') || ((c) == '\n') || ((c) == '\0'))
+
+size_t
+qwantzle_phrase_filter(char *candidate, void *user_data)
+{
+    char *c;
+    size_t length, lc;  /* letter count */
+
+    /* Count the letters in each word of this phrase */
+    for (c = candidate, length = 0, lc = 0;
+         /* intentionally left blank */;
+         ++c) {
+        if (isdelim(*c)) {
+            /* The two longest words have 11 and 8 letters, respectively */
+            if ((lc < 1) /* how? */
+                || (lc > 11)
+                || ((lc > 8) && (lc < 11)))
+                return 0;
+
+            if ((*c == '\n') || (*c == '\0'))
+                break;  /* we've reached the end of the phrase */
+            else
+                lc = 0; /* reset the letter count for the next word */
+        } else if (pool_in_alphabet(*c))
+            ++lc;
+        else if (phrase_cannot_include(*c))
+            return 0;
+        ++length;
+    }
+
+    return length;
+}
+
 bool
 qwantzle_phrase_check(char *candidate, char *sentence, void *user_data)
 {
     char *c, *s;
-    size_t c_letters, s_letters;
+    size_t clc, slc;    /* candidate and sentence letter counts */
     struct sentence_info *si = user_data;
 
-    /* Both the candidate and sentence may contain multiple words
-     * delimited by spaces, which allows us to consider a complete
-     * phrase as a single unit. What we're doing here is counting
-     * the lengths of their individual words and rejecting candidates
-     * containing words of an inappropriate length. */
-    for (c = candidate, c_letters = 0;
+    for (c = candidate, clc = 0;
          /* intentionally left blank */;
          ++c) {
-        if ((*c == ' ') || (*c == '\0')) {
-            /* We've reached a delimiter */
-            if (c_letters == 0) {
-                /* This isn't much of a word now, is it? */
-                return false;
-            } else if (c_letters == 1) {
-                /* "I" and "a" (case-sensitive) are the only plausible
-                 * single-letters words */
-                if (!((*c == 'I') || (*c == 'a')))
-                    return false;
-            } else if ((c_letters > 11)
-                       || ((c_letters > 8) && (c_letters < 11))) {
-                /* There are no words of this length */
-                return false;
-            } else if ((c_letters == 8) || (c_letters == 11)) {
-                /* The longest words are 8 and 11 letters, respectively,
-                 * and it's implied that there is only one of each */
-                for (s = sentence, s_letters = 0;
+        if (isdelim(*c)) {
+            if ((clc == 8) || (clc == 11)) {
+                /* It's implied there is only one word of each length */
+                for (s = sentence, slc = 0;
                      /* intentionally left blank */;
                      ++s) {
-                    if ((*s == ' ') || (*s == '\0')) {
-                        /* We've reached a delimiter */
-                        if (c_letters == s_letters)
-                            /* We've already used a word this length */
+                    if (isdelim(*s)) {
+                        if (clc == slc)
                             return false;
                         else if (*s == '\0')
-                            /* We're done with this sentence */
                             break;
-                        else if (*s == ' ')
-                            /* Reset the count for the next word */
-                            s_letters = 0;
+                        else
+                            slc = 0;
                     } else if (pool_in_alphabet(*s))
-                        /* Increase this word's letter count */
-                        ++s_letters;
+                        ++slc;
                 }
             }
-            /* The next few lines work just like their counterparts above */
+
             if (*c == '\0')
                 break;
-            else if (*c == ' ')
-                c_letters = 0;
+            else
+                clc = 0;
         } else if (pool_in_alphabet(*c))
-            ++c_letters;
+            ++clc;
     }
 
-    /* The final letter of the sentence is 'w', so make sure we
-     * haven't used up all of ours too early. */
-    if (pool_is_empty(si->pool)) {
-        if (candidate[strlen(candidate) - 1] != 'w')
-            return false;
-    } else {
-        if (!pool_contains(si->pool, 'w'))
-            return false;
-    }
+    (void)si;   /* come back to this when we fix 'w'-counting */
     return true;
 }
 
 void
 qwantzle_solved(char *sentence, void *user_data)
 {
-    (void)user_data;
+    /* The final letter of the sentence is 'w' */
+    if (sentence[strlen(sentence) - 1] != 'w')
+        return;
 
     /* The first word of the solution is "I" */
     printf("I %s\n", sentence);
@@ -310,7 +314,8 @@ main(int argc, char **argv)
             return 1;
         }
     }
-    si.phrase_list = phrase_list_read(NULL, fp, &si.phrase_count, si.pool);
+    si.phrase_list = phrase_list_read_filtered(
+        NULL, fp, &si.phrase_count, si.pool, qwantzle_phrase_filter, NULL);
     fclose(fp);
 
     if (si.phrase_list == NULL) {
