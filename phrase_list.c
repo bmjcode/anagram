@@ -136,61 +136,6 @@ phrase_list_read(struct phrase_list *prev,
     return head;
 }
 
-struct phrase_list *
-phrase_list_filter(struct phrase_list *orig, size_t *count, pool_t *pool)
-{
-    struct phrase_list *curr, *prev, *next, *head;
-
-    if ((orig == NULL) || (pool == NULL))
-        return NULL;
-
-    /* Reset the phrase count */
-    if (count != NULL)
-        *count = 0;
-
-    prev = NULL;
-    next = NULL;
-    head = NULL;
-
-    for (curr = orig; curr != NULL; curr = curr->next) {
-        if (!pool_can_spell(pool, curr->phrase))
-            continue;
-
-        next = malloc(sizeof(struct phrase_list));
-        if (next == NULL) {
-            phrase_list_filter_free(head);
-            return NULL;
-        }
-
-        next->phrase = curr->phrase;
-        next->length = curr->length;
-        next->next = NULL;
-
-        if (prev != NULL)
-            prev->next = next;
-        prev = next;
-        if (head == NULL)
-            head = next;
-        if (count != NULL)
-            ++*count;
-    }
-    return head;
-}
-
-void
-phrase_list_filter_free(struct phrase_list *first)
-{
-    struct phrase_list *curr, *next;
-
-    curr = first;
-    while (curr != NULL) {
-        /* Don't free curr->phrase, which is shared with the original list */
-        next = curr->next;
-        free(curr);
-        curr = next;
-    }
-}
-
 const char *
 phrase_list_default(void)
 {

@@ -70,22 +70,6 @@ struct phrase_list *phrase_list_read(struct phrase_list *prev,
                                      pool_t *letter_pool);
 
 /*
- * Return the subset of a phrase list spellable with the specified letters.
- *
- * The number of phrases is stored in 'count'.
- * Beware that the filtered list shares memory with the original, so don't
- * free the original until you are done with the filtered version.
- */
-struct phrase_list *phrase_list_filter(struct phrase_list *orig,
-                                       size_t *count,
-                                       pool_t *letter_pool);
-
-/*
- * Free memory used by a filtered phrase list.
- */
-void phrase_list_filter_free(struct phrase_list *first);
-
-/*
  * Return the path to our default phrase list.
  *
  * The return value is a static string. Don't free it!
