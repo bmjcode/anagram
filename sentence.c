@@ -64,6 +64,7 @@ sentence_build(struct sentence_info *si)
     struct sbi_state sbi;
     struct phrase_list *lp; /* list pointer */
     char **dst;
+    size_t i, buf_length;
 
     if ((si == NULL)
         || pool_is_empty(si->pool)
@@ -71,22 +72,20 @@ sentence_build(struct sentence_info *si)
         || (si->phrase_count == 0))
         return;
 
+    sbi.sentence = NULL;
+    sbi.phrases = NULL;
     sbi.depth = 0;
 
-    /* Allocate enough memory for the longest possible sentence:
-     * all single-letter words with a space or '\0' after each. */
-    sbi.sentence = malloc(2 * pool_count_all(si->pool) * sizeof(char));
-    if (sbi.sentence == NULL)
-        return; /* this could be a problem */
+    /* Our buffer must be big enough to hold any sentence we can build.
+     * Start by assuming the worst-case scenario: all single-letter words,
+     * with a space or the terminating '\0' after each. */
+    buf_length = 2 * pool_count_all(si->pool);
 
-    /* This is the position where we add the next word in the sentence */
-    sbi.write_pos = sbi.sentence;
-    *sbi.write_pos = '\0';
-
+    /* Now hold that thought while we prepare our phrase list. */
     sbi.phrase_count = si->phrase_count;
     sbi.phrases = malloc((sbi.phrase_count + 1) * sizeof(char*));
-    if (sbi.phrases == NULL)
-        return; /* this may be a problem */
+    if (sbi.phrases == NULL) /* this could be a problem */
+        goto cleanup;
 
     /* Flatten the phrase list into an array of char* pointers with a
      * terminating NULL pointer. We read it in as a linked list because
@@ -101,17 +100,40 @@ sentence_build(struct sentence_info *si)
          lp = lp->next) {
         /* Filter the list now since we're iterating through it anyway */
         if ((si->phrase_filter_cb == NULL)
-            || si->phrase_filter_cb(lp->phrase, si->user_data))
+            || si->phrase_filter_cb(lp->phrase, si->user_data)) {
             *dst++ = lp->phrase;
-        else
+            /* Did I say our worst case was all single-letter words?
+             * I forgot to mention that phrases can include non-alphabetic
+             * characters like spaces and punctuation. To play it safe,
+             * let's leave enough space to fit all of them at once. */
+            for (i = 0; i < lp->length; ++i)
+                if (!pool_in_alphabet(lp->phrase[i]))
+                    ++buf_length;
+        } else
             --sbi.phrase_count;
     }
     *dst = NULL;
 
+    /* Now let's allocate that buffer. Reusing the same oversized buffer
+     * is far more efficient than allocating a new, perfectly-sized buffer
+     * each time we add a phrase. The magic of C strings is we can put a
+     * '\0' wherever we want to end them and no one will be the wiser. */
+    sbi.sentence = malloc(buf_length * sizeof(char));
+    if (sbi.sentence == NULL) /* this could also be a problem */
+        goto cleanup;
+
+    /* This is the position where we add the next word in the sentence */
+    sbi.write_pos = sbi.sentence;
+    *sbi.write_pos = '\0';
+
+    /* Now the fun begins */
     sentence_build_inner(si, &sbi);
 
-    free(sbi.sentence);
-    free(sbi.phrases);
+cleanup:
+    if (sbi.sentence != NULL)
+        free(sbi.sentence);
+    if (sbi.phrases != NULL)
+        free(sbi.phrases);
 }
 
 void sentence_build_inner(struct sentence_info *si,
