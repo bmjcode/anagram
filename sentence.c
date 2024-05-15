@@ -1,5 +1,5 @@
 /*
- * Functions for building a sentence from a phrase list.
+ * Functions for building sentences from phrases.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any

@@ -1,5 +1,5 @@
 /*
- * Functions for working with an in-memory phrase list.
+ * Functions for working with phrase lists.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any

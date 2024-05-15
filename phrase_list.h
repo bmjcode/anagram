@@ -1,5 +1,5 @@
 /*
- * Functions for working with an in-memory phrase list.
+ * Functions for working with phrase lists.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -16,8 +16,12 @@
  */
 
 /*
- * For our purposes a "phrase" is any combination of one or more words
- * joined by spaces and/or punctuation.
+ * Phrases are the basic unit of sentence construction. For our purposes,
+ * a "phrase" consists of one or more words (in the everyday sense) joined
+ * by spaces. Phrases are always considered for addition to a sentence as
+ * a whole, so for their constituent words to be considered individually
+ * they must also be listed that way. Phrases may include punctuation, to
+ * allow for contractions, but not digits.
  */
 
 #ifndef PHRASE_LIST_H
@@ -39,7 +43,7 @@ struct phrase_list {
 };
 
 /*
- * Add a phrase to the list.
+ * Add a phrase to a list.
  *
  * If prev is NULL, this starts a new list.
  * Returns a pointer to the newly added phrase.
@@ -59,8 +63,8 @@ void phrase_list_free(struct phrase_list *first);
  * The number of phrases is stored in 'count'.
  *
  * If 'letter_pool' is provided, only words spellable using the letters
- * in the pool will be included in the list. This is NOT a premature
- * optimization; reading too long a list into memory may cause a segfault.
+ * in the pool will be included in the list. This prevents us from
+ * considering phrases we can never use -- a significant optimization.
  *
  * Returns a pointer to the first item in the list.
  */

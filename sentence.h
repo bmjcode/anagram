@@ -1,5 +1,5 @@
 /*
- * Functions for building a sentence from a phrase list.
+ * Functions for building sentences from phrases.
  * Copyright (c) 2023 Benjamin Johnson <bmjcode@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -13,6 +13,13 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * This is the part where we actually find the anagrams. We call them
+ * "sentences" here because we assemble them from phrases, though unlike
+ * in everyday usage, here we aren't concerned with little things like
+ * grammar or meaning. (Those are the user's problem.)
  */
 
 #ifndef SENTENCE_H
@@ -111,8 +118,6 @@ void sentence_info_init(struct sentence_info *si);
 
 /*
  * Build a "sentence" using phrases formed from letters in the pool.
- * For our purposes a sentence is any combination of one or more phrases
- * separated by spaces.
  *
  * To run in multiple threads, create a separate struct sentence_info
  * for each thread. All threads may share the same phrase list (and should
