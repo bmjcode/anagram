@@ -37,8 +37,8 @@ enum mode {
 
 static size_t qwantzle_phrase_filter(char *candidate, pool_t *letter_pool,
                                      void *user_data);
-static bool qwantzle_phrase_check(char *candidate, char *sentence,
-                                  void *user_data);
+static bool qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
+                                void *user_data);
 static void qwantzle_solved(char *sentence, void *user_data);
 
 static void start(struct sentence_info *si, unsigned short num_threads);
@@ -97,11 +97,11 @@ qwantzle_phrase_filter(char *candidate, pool_t *letter_pool, void *user_data)
 }
 
 bool
-qwantzle_phrase_check(char *candidate, char *sentence, void *user_data)
+qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
+                    void *user_data)
 {
     char *c, *s;
     size_t clc, slc;    /* candidate and sentence letter counts */
-    struct sentence_info *si = user_data;
 
     for (c = candidate, clc = 0;
          /* intentionally left blank */;
@@ -132,7 +132,6 @@ qwantzle_phrase_check(char *candidate, char *sentence, void *user_data)
             ++clc;
     }
 
-    (void)si;   /* come back to this when we fix 'w'-counting */
     return true;
 }
 
@@ -283,8 +282,7 @@ main(int argc, char **argv)
     mode = QWANTZLE_SOLVER;
 
     sentence_info_init(&si);
-    si.user_data = &si; /* what could go wrong? */
-    si.phrase_check_cb = qwantzle_phrase_check;
+    si.add_phrase_cb = qwantzle_add_phrase;
     si.sentence_cb = qwantzle_solved;
 
     /* The first word of the solution is "I", which is added by

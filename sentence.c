@@ -51,7 +51,7 @@ sentence_info_init(struct sentence_info *si)
     si->offset = 0;
 
     si->canceled_cb = NULL;
-    si->phrase_check_cb = NULL;
+    si->add_phrase_cb = NULL;
     si->first_phrase_cb = NULL;
     si->progress_cb = NULL;
     si->sentence_cb = NULL;
@@ -171,9 +171,10 @@ void sentence_build_inner(struct sentence_info *si,
         if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
             break;
 
-        /* Check if we can use this phrase here. */
-        if (!((si->phrase_check_cb == NULL)
-              || si->phrase_check_cb(*curr, sbi->sentence, si->user_data)))
+        /* Check if we can add this phrase here. */
+        if (!((si->add_phrase_cb == NULL)
+              || si->add_phrase_cb(*curr, sbi->sentence, si->pool,
+                                   si->user_data)))
             goto next_phrase;
 
         /* If this is the outermost loop, report our new first phrase. */

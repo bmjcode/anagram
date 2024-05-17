@@ -61,19 +61,22 @@ struct sentence_info {
     bool (*canceled_cb)(void *user_data);
 
     /*
-     * Callback function to implement a phrase check.
+     * Callback function when a new phrase is about to be added
+     * to the sentence.
+     *
      * Return true to accept a candidate, false to reject it.
+     * If no callback is specified, all candidates are accepted.
      *
-     * This is called each time a new phrase is about to be added
-     * to the sentence. You might use it to restrict where a particular
-     * phrase may be added to the sentence.
+     * You can use this to implement complex rules like only
+     * allowing phrases with certain letters in specific positions.
+     * Note that when this function is called the phrase is known
+     * to be spellable using the letters currently in the pool.
      *
-     * The sentence parameter contains the sentence in progress before
-     * the candidate phrase is added.
-     *
-     * If no filter is specified, all candidates are accepted.
+     * The 'sentence' and 'pool' parameters provide the state of
+     * those items before the candidate phrase is added.
      */
-    bool (*phrase_check_cb)(char *candidate, char *sentence, void *user_data);
+    bool (*add_phrase_cb)(char *candidate, char *sentence, pool_t *pool,
+                          void *user_data);
 
     /*
      * Callback function to indicate we have a new first phrase.
