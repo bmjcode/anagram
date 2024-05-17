@@ -27,7 +27,8 @@ struct sbi_state {
     char *write_pos;
     char **phrases;
     size_t phrase_count;
-    size_t depth; /* recursion depth; also the number of words we've used */
+    size_t depth; /* recursion depth */
+    size_t used_words; /* individual words, not complete phrases! */
 };
 
 static void sentence_build_inner(struct sentence_info *si,
@@ -74,6 +75,7 @@ sentence_build(struct sentence_info *si)
     sbi.sentence = NULL;
     sbi.phrases = NULL;
     sbi.depth = 0;
+    sbi.used_words = 0;
 
     /* Our buffer must be big enough to hold any sentence we can build.
      * Start by assuming the worst-case scenario: all single-letter words,
@@ -134,7 +136,7 @@ void sentence_build_inner(struct sentence_info *si,
                           struct sbi_state *sbi)
 {
     char **prev, **curr, *n, *p;
-    size_t i;
+    size_t i, wc;
 
     /*
      * We can skip the sanity checks here because this function is only
@@ -171,6 +173,31 @@ void sentence_build_inner(struct sentence_info *si,
         if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
             break;
 
+        wc = 0;
+        if (si->max_words != 0) {
+            size_t lc;
+            /* Count how many words are in this phrase, and skip it if it
+             * would put us over our limit. */
+            for (p = *curr, lc = 0;
+                 /* intentionally left blank */;
+                 ++p) {
+                if (phrase_delimiter(*p)) {
+                    if (lc >= 1) {
+                        ++wc;
+                        if (sbi->used_words + wc > si->max_words)
+                            goto next_phrase;
+                    }
+                    /* We check for the end of the phrase here rather than
+                     * in the for loop so our last phrase is counted above. */
+                    if (phrase_terminator(*p))
+                        break; /* we're done with this phrase */
+                    else
+                        lc = 0; /* reset the count for the next word */
+                } else if (pool_in_alphabet(*p))
+                    ++lc;
+            }
+        }
+
         /* Check if we can add this phrase here. */
         if (!((si->add_phrase_cb == NULL)
               || si->add_phrase_cb(*curr, sbi->sentence, si->pool,
@@ -197,8 +224,7 @@ void sentence_build_inner(struct sentence_info *si,
                 printf("%s\n", sbi->sentence);
             else
                 si->sentence_cb(sbi->sentence, si->user_data);
-        } else if ((si->max_words == 0)
-                   || (sbi->depth + 1 < si->max_words)) {
+        } else {
             struct sbi_state new_sbi;
             size_t buf_size = (sbi->phrase_count + 1) * sizeof(char*);
 
@@ -208,6 +234,7 @@ void sentence_build_inner(struct sentence_info *si,
                 memcpy(new_sbi.phrases, sbi->phrases, buf_size);
                 new_sbi.phrase_count = sbi->phrase_count;
                 new_sbi.depth = sbi->depth + 1;
+                new_sbi.used_words = sbi->used_words + wc;
 
                 *n++ = ' ';
                 *n = '\0'; /* hide remnants of previous attempts */

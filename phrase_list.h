@@ -143,4 +143,10 @@ const char *phrase_list_default(void);
 #define phrase_terminator(c) \
         (((c) == '\n') || ((c) == '\0'))
 
+/*
+ * Use this in your phrase filter to identify the delimiter between words.
+ */
+#define phrase_delimiter(c) \
+        (((c) == ' ') || phrase_terminator(c))
+
 #endif /* PHRASE_LIST_H */

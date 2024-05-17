@@ -49,8 +49,6 @@ static void usage(FILE *stream, char *prog_name);
 static void *run_thread(void *si);
 #endif /* ENABLE_PTHREAD */
 
-#define isdelim(c) (((c) == ' ') || phrase_terminator(c))
-
 size_t
 qwantzle_phrase_filter(char *candidate, pool_t *pool, void *user_data)
 {
@@ -67,7 +65,7 @@ qwantzle_phrase_filter(char *candidate, pool_t *pool, void *user_data)
     for (c = candidate, length = 0, lc = 0;
          /* intentionally left blank */;
          ++c) {
-        if (isdelim(*c)) {
+        if (phrase_delimiter(*c)) {
             /* The two longest words have 11 and 8 letters, respectively */
             if ((lc < 1) /* how? */
                 || (lc > 11)
@@ -115,13 +113,13 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
     for (c = candidate, clc = 0;
          /* intentionally left blank */;
          ++c) {
-        if (isdelim(*c)) {
+        if (phrase_delimiter(*c)) {
             if ((clc == 8) || (clc == 11)) {
                 /* It's implied there is only one word of each length */
                 for (s = sentence, slc = 0;
                      /* intentionally left blank */;
                      ++s) {
-                    if (isdelim(*s)) {
+                    if (phrase_delimiter(*s)) {
                         if (clc == slc)
                             return false;
                         else if (*s == '\0')
