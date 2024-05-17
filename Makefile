@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS ?= -O3 -fPIC -Wall -Werror
+CFLAGS ?= -O3 -fPIC -Wall -Werror -pipe
 LDFLAGS ?=
 
 # Enable threading
