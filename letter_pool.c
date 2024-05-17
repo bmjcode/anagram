@@ -60,6 +60,20 @@ pool_subtract(pool_t *pool, const char *letters)
     }
 }
 
+void
+pool_add_letter(pool_t *pool, char letter)
+{
+    if ((pool != NULL) && pool_in_alphabet(letter))
+        ++pool[letter - POOL_START];
+}
+
+void
+pool_subtract_letter(pool_t *pool, char letter)
+{
+    if ((pool != NULL) && pool_in_alphabet(letter))
+        --pool[letter - POOL_START];
+}
+
 bool
 pool_can_spell(pool_t *pool, const char *phrase)
 {
@@ -95,6 +109,20 @@ pool_reset(pool_t *pool)
 
     for (i = 0; i < POOL_SIZE; ++i)
         pool[i] = 0;
+}
+
+bool
+pool_counts_match(pool_t *left, pool_t *right)
+{
+    size_t i;
+
+    if ((left == NULL) || (right == NULL))
+        return false; /* no pool, no count, no match */
+
+    for (i = 0; i < POOL_SIZE; ++i)
+        if (left[i] != right[i])
+            return false;
+    return true;
 }
 
 void

@@ -30,7 +30,8 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
-static size_t qwantzle_phrase_filter(char *candidate, void *user_data);
+static size_t qwantzle_phrase_filter(char *candidate, pool_t *letter_pool,
+                                     void *user_data);
 static bool qwantzle_phrase_check(char *candidate, char *sentence,
                                   void *user_data);
 static void qwantzle_solved(char *sentence, void *user_data);
@@ -43,13 +44,19 @@ static void usage(FILE *stream, char *prog_name);
 static void *run_thread(void *si);
 #endif /* ENABLE_PTHREAD */
 
-#define isdelim(c) (((c) == ' ') || ((c) == '\n') || ((c) == '\0'))
+#define isdelim(c) (((c) == ' ') || phrase_terminator(c))
 
 size_t
-qwantzle_phrase_filter(char *candidate, void *user_data)
+qwantzle_phrase_filter(char *candidate, pool_t *letter_pool, void *user_data)
 {
     char *c;
     size_t length, lc;  /* letter count */
+    pool_t antipool[POOL_SIZE];
+
+    if ((candidate == NULL) || (letter_pool == NULL))
+        return 0;
+
+    pool_reset(antipool);
 
     /* Count the letters in each word of this phrase */
     for (c = candidate, length = 0, lc = 0;
@@ -62,13 +69,16 @@ qwantzle_phrase_filter(char *candidate, void *user_data)
                 || ((lc > 8) && (lc < 11)))
                 return 0;
 
-            if ((*c == '\n') || (*c == '\0'))
+            if (phrase_terminator(*c))
                 break;  /* we've reached the end of the phrase */
             else
                 lc = 0; /* reset the letter count for the next word */
-        } else if (pool_in_alphabet(*c))
+        } else if (pool_in_alphabet(*c)) {
+            pool_add_letter(antipool, *c);
+            if (pool_count(antipool, *c) > pool_count(letter_pool, *c))
+                return 0;
             ++lc;
-        else if (phrase_cannot_include(*c))
+        } else if (phrase_cannot_include(*c))
             return 0;
         ++length;
     }

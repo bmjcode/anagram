@@ -41,24 +41,29 @@ struct phrase_list {
 /*
  * Prototype for a phrase filter function.
  *
- * The phrase filter sanitizes candidate phrases and determines whether
- * they are suitable for constructing anagrams. The default phrase filter
- * is good for most applications, but you can define your own to implement
- * more complex rules like only accepting phrases of a certain length.
+ * The phrase filter determines if a candidate phrase is usable. Most
+ * applications should probably stick with the default filter, but you can
+ * can define your own if you need to implement more complex rules like only
+ * accepting phrases of a certain length.
  *
  * If the candidate phrase is acceptable, this should return its length
  * excluding the trailing '\0' a la strlen(). Otherwise, it should return 0.
  */
-typedef size_t (*phrase_filter_cb)(char *candidate, void *user_data);
+typedef size_t (*phrase_filter_cb)(char *candidate,
+                                   pool_t *letter_pool,
+                                   void *user_data);
 
 /*
  * The default phrase filter.
  *
  * This checks that phrases contain at least one letter and no digits.
- * It allows spaces and punctuation so long as they make up no more than
- * half the characters. It also removes trailing newlines.
+ * If a letter pool is specified, it confirms that the phrase can be
+ * spelled using the pool letters. It allows spaces and punctuation so
+ * long as they make up no more than half the characters.
  */
-size_t phrase_filter_default(char *candidate, void *user_data);
+size_t phrase_filter_default(char *candidate,
+                             pool_t *letter_pool,
+                             void *user_data);
 
 /*
  * Add a phrase to a list.
@@ -120,5 +125,13 @@ const char *phrase_list_default(void);
  */
 #define phrase_cannot_include(c) \
         (iscntrl(c) || !(((c) == ' ') || ispunct(c)))
+
+/*
+ * Use this in your phrase filter to identify the end of a phrase.
+ * We treat newline as a terminator to exclude it from the returned length,
+ * which eliminates the unwanted one from fgets() in phrase_list_read().
+ */
+#define phrase_terminator(c) \
+        (((c) == '\n') || ((c) == '\0'))
 
 #endif /* PHRASE_LIST_H */

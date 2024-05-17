@@ -54,7 +54,7 @@ typedef size_t pool_t;
  * Returns the number of a given letter in the pool.
  */
 #define pool_count(pool, letter) \
-        ((pool)[(letter) - POOL_START])
+        (pool_in_alphabet(letter) ? ((pool)[(letter) - POOL_START]) : 0)
 
 /*
  * Return whether there is at least one of 'letter' in the pool.
@@ -81,6 +81,16 @@ void pool_add(pool_t *pool, const char *letters);
 void pool_subtract(pool_t *pool, const char *letters);
 
 /*
+ * Add a single letter to the pool.
+ */
+void pool_add_letter(pool_t *pool, char letter);
+
+/*
+ * Subtract a single letter from the pool.
+ */
+void pool_subtract_letter(pool_t *pool, char letter);
+
+/*
  * Returns whether there are enough letters in the pool to spell
  * the specified word or phrase. Spaces and punctuation are ignored.
  */
@@ -98,6 +108,12 @@ void pool_reset(pool_t *pool);
  */
 #define pool_is_empty(pool) \
         (pool_count_all(pool) == 0)
+
+/*
+ * Return whether two pools are equal (they have the same count for
+ * each letter).
+ */
+bool pool_counts_match(pool_t *left, pool_t *right);
 
 /*
  * Make a copy of a letter pool.

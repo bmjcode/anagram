@@ -22,29 +22,33 @@
 #include "phrase_list.h"
 
 size_t
-phrase_filter_default(char *candidate, void *user_data)
+phrase_filter_default(char *candidate, pool_t *letter_pool, void *user_data)
 {
     const char *c;
     size_t length, letter_count;
+    pool_t antipool[POOL_SIZE];
 
     if (candidate == NULL)
         return 0;
+
+    pool_reset(antipool);
 
     /* We need the total length for memory allocation, and the letter count
      * to determine if this is a usable phrase. */
     length = 0;
     letter_count = 0;
 
-    /* fgets(), which we use in phrase_list_read(), includes the trailing
-     * newline character. We don't want this, so we treat it as a delimiter,
-     * thus excluding it from our character count. This lets us combine
-     * measurements, sanity checks, and newline removal into a single pass. */
-    for (c = candidate; !((*c == '\0') || (*c == '\n')); ++c) {
-        /* This is the fastest order of operations if most characters in
-         * the phrase are letters, as should usually be the case. */
-        if (pool_in_alphabet(*c))
+    /* By avoiding library functions and doing all the counting ourselves,
+     * we can do everything we need in a single pass. */
+    for (c = candidate; !phrase_terminator(*c); ++c) {
+        if (pool_in_alphabet(*c)) {
+            if (letter_pool != NULL) {
+                pool_add_letter(antipool, *c);
+                if (pool_count(antipool, *c) > pool_count(letter_pool, *c))
+                    return 0;
+            }
             ++letter_count;
-        else if (phrase_cannot_include(*c))
+        } else if (phrase_cannot_include(*c))
             return 0;
         ++length;
     }
@@ -145,11 +149,7 @@ phrase_list_read_filtered(struct phrase_list *prev,
 
     head = NULL;
     while (fgets(buf, sizeof(buf), fp) != NULL) {
-        if (!((letter_pool == NULL)
-              || pool_can_spell(letter_pool, buf)))
-            continue;
-
-        length = phrase_filter(buf, user_data);
+        length = phrase_filter(buf, letter_pool, user_data);
         if (length == 0)
             continue;
 
