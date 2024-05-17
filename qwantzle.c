@@ -105,12 +105,12 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
                     void *user_data)
 {
     char *c, *s;
-    size_t clc, slc;    /* candidate and sentence letter counts */
+    size_t c_len, s_len, clc, slc;
     pool_t antipool[POOL_SIZE];
 
     pool_reset(antipool);
 
-    for (c = candidate, clc = 0;
+    for (c = candidate, c_len = 0, clc = 0;
          /* intentionally left blank */;
          ++c) {
         if (phrase_delimiter(*c)) {
@@ -144,6 +144,19 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
                 return false;
             ++clc;
         }
+        ++c_len;
+    }
+
+    /* Check the length of our sentence */
+    /* (we didn't need this before so putting it here is an optimization) */
+    for (s = sentence, s_len = 0; *s != '\0'; ++s)
+        ++s_len;
+
+    /* Don't repeat the last phrase we used */
+    if (s_len >= c_len) {
+        s = sentence + s_len - c_len - 1;
+        if (strncmp(candidate, s, c_len) == 0)
+            return false;
     }
 
     if (pool_counts_match(antipool, pool)) {
