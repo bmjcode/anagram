@@ -26,8 +26,6 @@ static DWORD WINAPI RunAnagramSearchThread(LPVOID lpParam);
 static void first_phrase_cb(char *candidate, size_t length, void *user_data);
 static void progress_cb(void *user_data);
 static void sentence_cb(char *sentence, size_t length, void *user_data);
-static void sentence_cb_inner(char *sentence, size_t length,
-                              struct anagram_window *window);
 
 /*
  * Start searching for anagrams.
@@ -264,7 +262,19 @@ sentence_cb(char *sentence, size_t length, void *user_data)
     switch (dwResult) {
         case WAIT_OBJECT_0:
             /* Our turn to add to the list */
-            sentence_cb_inner(sentence, length, window);
+            window->last_anagram = phrase_list_add(window->last_anagram,
+                                                   sentence,
+                                                   length,
+                                                   &window->anagram_count);
+            if (window->last_anagram == NULL)
+                ExitProcess(1); /* we've run out of memory */
+            else if (window->anagrams == NULL)
+                window->anagrams = window->last_anagram;
+
+            /* This is processed by UpdateAnagramList() in window.c */
+            if (window->next_to_display == NULL)
+                window->next_to_display = window->last_anagram;
+
             ReleaseMutex(window->hMutex);
             break;
 
@@ -272,22 +282,4 @@ sentence_cb(char *sentence, size_t length, void *user_data)
             /* Abandoned mutex (we should never see this) */
             return;
     }
-}
-
-void
-sentence_cb_inner(char *sentence, size_t length,
-                  struct anagram_window *window)
-{
-    window->last_anagram = phrase_list_add(window->last_anagram,
-                                           sentence,
-                                           length,
-                                           &window->anagram_count);
-    if (window->last_anagram == NULL)
-        ExitProcess(1); /* we've run out of memory */
-    else if (window->anagrams == NULL)
-        window->anagrams = window->last_anagram; /* this is the first one */
-
-    /* See UpdateAnagramList() in window.c for how results get displayed */
-    if (window->next_to_display == NULL)
-        window->next_to_display = window->last_anagram;
 }
