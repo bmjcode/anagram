@@ -35,7 +35,7 @@ enum mode {
     PHRASE_FILTER
 };
 
-static size_t qwantzle_phrase_filter(char *candidate, pool_t *letter_pool,
+static size_t qwantzle_phrase_filter(char *candidate, pool_t *pool,
                                      void *user_data);
 static bool qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
                                 void *user_data);
@@ -52,13 +52,13 @@ static void *run_thread(void *si);
 #define isdelim(c) (((c) == ' ') || phrase_terminator(c))
 
 size_t
-qwantzle_phrase_filter(char *candidate, pool_t *letter_pool, void *user_data)
+qwantzle_phrase_filter(char *candidate, pool_t *pool, void *user_data)
 {
     char *c;
     size_t length, lc;  /* letter count */
     pool_t antipool[POOL_SIZE];
 
-    if ((candidate == NULL) || (letter_pool == NULL))
+    if ((candidate == NULL) || (pool == NULL))
         return 0;
 
     pool_reset(antipool);
@@ -80,7 +80,13 @@ qwantzle_phrase_filter(char *candidate, pool_t *letter_pool, void *user_data)
                 lc = 0; /* reset the letter count for the next word */
         } else if (pool_in_alphabet(*c)) {
             pool_add_letter(antipool, *c);
-            if (pool_count(antipool, *c) > pool_count(letter_pool, *c))
+            if (pool_count(antipool, *c) > pool_count(pool, *c))
+                return 0;
+            else if ((*c == 'w')
+                     && (pool_count(antipool, *c) == pool_count(pool, *c))
+                     && (!phrase_terminator(*(c + 1))))
+                /* The final letter is 'w', so eliminate phrases that could
+                 * never work because they use all ours up too early */
                 return 0;
             ++lc;
         } else if (phrase_cannot_include(*c))
@@ -102,6 +108,9 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
 {
     char *c, *s;
     size_t clc, slc;    /* candidate and sentence letter counts */
+    pool_t antipool[POOL_SIZE];
+
+    pool_reset(antipool);
 
     for (c = candidate, clc = 0;
          /* intentionally left blank */;
@@ -128,20 +137,29 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
                 break;
             else
                 clc = 0;
-        } else if (pool_in_alphabet(*c))
+        } else if (pool_in_alphabet(*c)) {
+            pool_add_letter(antipool, *c);
+            if ((*c == 'w')
+                && (pool_count(antipool, 'w') == pool_count(pool, 'w'))
+                && !pool_counts_match(antipool, pool))
+                /* This isn't our last phrase, so don't use up our 'w's yet */
+                return false;
             ++clc;
+        }
     }
 
-    return true;
+    if (pool_counts_match(antipool, pool)) {
+        /* This would be our last phrase, so check if it ends with 'w' */
+        while (!pool_in_alphabet(*c))
+            --c;
+        return (*c == 'w');
+    } else
+        return true;
 }
 
 void
 qwantzle_solved(char *sentence, void *user_data)
 {
-    /* The final letter of the sentence is 'w' */
-    if (sentence[strlen(sentence) - 1] != 'w')
-        return;
-
     /* The first word of the solution is "I" */
     printf("I %s\n", sentence);
 }
