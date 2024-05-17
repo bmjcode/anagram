@@ -20,11 +20,28 @@
 
 #include <stdbool.h>
 
+/*
+ * This implementation assumes a character set with certain ASCII-like
+ * properties -- namely, that the alphabet is encoded in one contiguous
+ * block, with uppercase sorted first. This lets us calculate pool_t
+ * array indices using simple pointer arithmetic, which provides a small
+ * speed boost in functions like sentence_build() that use pools heavily.
+ *
+ * I believe this is a safe assumption for most people since exceptions
+ * like EBCDIC are, to my knowledge, uncommon. Extending these functions
+ * to other alphabets and encodings is left as an exercise to the reader.
+ */
+
+/* A letter pool is an array of pool_t variables counting how many times each
+ * letter of the alphabet is used in a phrase. Use POOL_SIZE as its length. */
 typedef size_t pool_t;
 
-/* This assumes the alphabet is encoded in one contiguous block */
+/* These are implementation details. Do not use them in your own code.
+ * They are defined first only because we need them to define POOL_SIZE. */
 #define POOL_START 'A'
 #define POOL_STOP  'z'
+
+/* This is the correct length for a pool_t array. */
 #define POOL_SIZE  (POOL_STOP - POOL_START + 1)
 
 /*
