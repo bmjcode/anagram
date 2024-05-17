@@ -30,6 +30,11 @@
 #include "phrase_list.h"
 #include "sentence.h"
 
+enum mode {
+    QWANTZLE_SOLVER,
+    PHRASE_FILTER
+};
+
 static size_t qwantzle_phrase_filter(char *candidate, pool_t *letter_pool,
                                      void *user_data);
 static bool qwantzle_phrase_check(char *candidate, char *sentence,
@@ -247,9 +252,10 @@ usage(FILE *stream, char *prog_name)
 {
     fprintf(stream,
             "Solve the anacryptogram from Dinosaur Comics #1663.\n"
-            "Usage: %s [-h] [-f] [-l PATH] [-t NUM] [-w NUM]\n"
+            "Usage: %s [-h] [-f] [-p] [-l PATH] [-t NUM] [-w NUM]\n"
             "  -h       Display this help message and exit\n"
             "  -f       Filter mode (read phrase list from stdin)\n"
+            "  -p       Print valid phrases from the list and exit\n"
             "  -l PATH  Override the default phrase list\n"
             "  -t NUM   Start the specified number of threads (default: 1)\n"
             "  -w NUM   Limit results to this many words or fewer\n",
@@ -272,7 +278,9 @@ main(int argc, char **argv)
     struct sentence_info si;
     const char *list_path;
     int opt;
-    unsigned short num_threads;
+    unsigned short mode, num_threads;
+
+    mode = QWANTZLE_SOLVER;
 
     sentence_info_init(&si);
     si.user_data = &si; /* what could go wrong? */
@@ -289,7 +297,7 @@ main(int argc, char **argv)
     list_path = NULL;
     num_threads = 1;
 
-    while ((opt = getopt(argc, argv, "hfl:t:w:")) != -1) {
+    while ((opt = getopt(argc, argv, "hfpl:t:w:")) != -1) {
         switch (opt) {
             case 'h':
                 /* Display help and exit */
@@ -299,6 +307,10 @@ main(int argc, char **argv)
             case 'f':
                 /* Filter mode */
                 fp = stdin;
+                break;
+            case 'p':
+                /* Print filtered phrases to stdout */
+                mode = PHRASE_FILTER;
                 break;
             case 'l':
                 /* Override the default phrase list */
@@ -340,8 +352,10 @@ main(int argc, char **argv)
         return 1;
     }
 
-    /* Search for valid sentences */
-    start(&si, num_threads);
+    if (mode == PHRASE_FILTER)
+        phrase_list_write(si.phrase_list, stdout);
+    else
+        start(&si, num_threads);
 
     phrase_list_free(si.phrase_list);
     return 0;

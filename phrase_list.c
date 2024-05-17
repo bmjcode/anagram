@@ -167,6 +167,23 @@ phrase_list_read_filtered(struct phrase_list *prev,
     return head;
 }
 
+bool
+phrase_list_write(struct phrase_list *head, FILE *fp)
+{
+    struct phrase_list *curr;
+    size_t bytes_written;
+
+    if ((head == NULL) || (fp == NULL))
+        return false;
+
+    for (curr = head; curr != NULL; curr = curr->next) {
+        bytes_written = fprintf(fp, "%s\n", curr->phrase);
+        if (bytes_written != curr->length + 1)
+            return false;
+    }
+    return true;
+}
+
 /* This should always return a valid path so we can display a useful error
  * message if the list does not exist. Do not use /usr/share/dict/words
  * because it's not portable to non-Unix systems, and its presence is not

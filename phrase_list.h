@@ -112,6 +112,15 @@ struct phrase_list *phrase_list_read_filtered(struct phrase_list *prev,
                                               void *user_data);
 
 /*
+ * Write a phrase list to a file.
+ *
+ * The file pointed to by 'fp' should be opened in mode "w".
+ *
+ * Returns true if the list was written successfully, false otherwise.
+ */
+bool phrase_list_write(struct phrase_list *head, FILE *fp);
+
+/*
  * Return the path to our default phrase list.
  *
  * The return value is a static string. Don't free it!
