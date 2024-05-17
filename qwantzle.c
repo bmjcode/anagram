@@ -160,8 +160,13 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
 void
 qwantzle_solved(char *sentence, void *user_data)
 {
-    /* The first word of the solution is "I" */
-    printf("I %s\n", sentence);
+    struct phrase_list *guess = user_data;
+
+    /* Hard-code the first word and end punctuation */
+    printf("%s", "I");
+    for (; guess != NULL; guess = guess->next)
+        printf(" %s", guess->phrase);
+    printf(" %s!!\n", sentence);
 }
 
 void
@@ -269,7 +274,8 @@ usage(FILE *stream, char *prog_name)
 {
     fprintf(stream,
             "Solve the anacryptogram from Dinosaur Comics #1663.\n"
-            "Usage: %s [-h] [-f] [-p] [-l PATH] [-t NUM] [-w NUM]\n"
+            "Usage: %s [-h] [-f] [-p] [-l PATH] [-t NUM] [-w NUM] "
+            "[guess ...]\n"
             "  -h       Display this help message and exit\n"
             "  -f       Filter mode (read phrase list from stdin)\n"
             "  -p       Print valid phrases from the list and exit\n"
@@ -294,17 +300,21 @@ main(int argc, char **argv)
     FILE *fp;
     struct sentence_info si;
     const char *list_path;
-    int opt;
+    int i, opt, retval;
     unsigned short mode, num_threads;
+    struct phrase_list *guessed_words, *last_guess;
 
+    retval = 0;
     mode = QWANTZLE_SOLVER;
+    guessed_words = NULL;
+    last_guess = NULL;
 
     sentence_info_init(&si);
     si.add_phrase_cb = qwantzle_add_phrase;
     si.sentence_cb = qwantzle_solved;
 
-    /* The first word of the solution is "I", which is added by
-     * qwantzle_solved() so we only have to solve for the remaining letters. */
+    /* The first word of the solution, "I", is added by qwantzle_solved(),
+     * so we only have to solve for the remaining letters. */
     pool_add(si.pool,
              "ttttttttttttooooooooooeeeeeeeeaaaaaaallllllnnnnnn"
              "uuuuuuiiiiisssssdddddhhhhhyyyyyIIrrrfffbbwwkcmvg");
@@ -343,6 +353,28 @@ main(int argc, char **argv)
         }
     }
 
+    /* Treat the remaining command-line arguments as guesses */
+    for (i = optind; i < argc; ++i) {
+        char *phrase = argv[i];
+        size_t length = qwantzle_phrase_filter(phrase, si.pool, NULL);
+        if ((i == optind) && !strcmp(phrase, "I")) {
+            /* We don't have to guess this because we already know it */
+            continue;
+        } else if (length == 0) {
+            fprintf(stderr, "Ignoring invalid guess: \"%s\"\n", phrase);
+            continue;
+        }
+        last_guess = phrase_list_add(last_guess, phrase, length, NULL);
+        if (last_guess == NULL) {
+            /* If we're out of memory already, we're in trouble */
+            goto cleanup;
+        } else if (guessed_words == NULL) {
+            guessed_words = last_guess;
+            si.user_data = guessed_words;
+        }
+        pool_subtract(si.pool, phrase);
+    }
+
     if (list_path == NULL)
         list_path = phrase_list_default();
     else if (strcmp(list_path, "-") == 0)
@@ -354,7 +386,8 @@ main(int argc, char **argv)
             fprintf(stderr,
                     "Failed to open: %s\n",
                     list_path);
-            return 1;
+            retval = 1;
+            goto cleanup;
         }
     }
     si.phrase_list = phrase_list_read_filtered(
@@ -365,7 +398,8 @@ main(int argc, char **argv)
         fprintf(stderr,
                 "Failed to read phrase list: %s\n",
                 list_path);
-        return 1;
+        retval = 1;
+        goto cleanup;
     }
 
     if (mode == PHRASE_FILTER)
@@ -373,6 +407,10 @@ main(int argc, char **argv)
     else
         start(&si, num_threads);
 
-    phrase_list_free(si.phrase_list);
-    return 0;
+cleanup:
+    if (si.phrase_list != NULL)
+        phrase_list_free(si.phrase_list);
+    if (guessed_words != NULL)
+        phrase_list_free(guessed_words);
+    return retval;
 }
