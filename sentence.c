@@ -24,8 +24,9 @@
 /* Internal state for sentence_build_inner() */
 struct sbi_state {
     char *sentence;
+    size_t sentence_length;
     char *write_pos;
-    char **phrases;
+    struct phrase_list **phrases;
     size_t phrase_count;
     size_t depth; /* recursion depth */
     size_t used_words; /* individual words, not complete phrases! */
@@ -63,7 +64,7 @@ sentence_build(struct sentence_info *si)
 {
     struct sbi_state sbi;
     struct phrase_list *lp; /* list pointer */
-    char **dst;
+    struct phrase_list **dst;
     size_t i, buf_length;
 
     if ((si == NULL)
@@ -73,6 +74,7 @@ sentence_build(struct sentence_info *si)
         return;
 
     sbi.sentence = NULL;
+    sbi.sentence_length = 0;
     sbi.phrases = NULL;
     sbi.depth = 0;
     sbi.used_words = 0;
@@ -84,22 +86,19 @@ sentence_build(struct sentence_info *si)
 
     /* Now hold that thought while we prepare our phrase list. */
     sbi.phrase_count = si->phrase_count;
-    sbi.phrases = malloc((sbi.phrase_count + 1) * sizeof(char*));
+    sbi.phrases = malloc((sbi.phrase_count + 1)
+                         * sizeof(struct phrase_list*));
     if (sbi.phrases == NULL) /* this could be a problem */
         goto cleanup;
 
-    /* Flatten the phrase list into an array of char* pointers with a
-     * terminating NULL pointer. We read it in as a linked list because
-     * we don't know the number of items in advance, and iterating
-     * through again to count would be either slow (reading from disk)
-     * or impossible (reading from stdin). Once we reach our inner loop
-     * our slowest operation is memory allocation, and duplicating an
-     * array -- which we do for each iteration -- only requires one of
-     * those as opposed to many for a linked list. */
+    /* From here on we will iterate through our phrase list using an array
+     * rather than by following its items' 'next' pointers. In our inner
+     * loop, this lets us efficiently remove phrases we can no longer use
+     * by replacing the array with a copy that omits them. */
     for (lp = si->phrase_list, dst = sbi.phrases;
          lp != NULL;
          lp = lp->next) {
-        *dst++ = lp->phrase;
+        *dst++ = lp;
         /* Did I say our worst case was all single-letter words?
          * I forgot to mention that phrases can include non-alphabetic
          * characters like spaces and punctuation. To play it safe,
@@ -135,7 +134,8 @@ cleanup:
 void sentence_build_inner(struct sentence_info *si,
                           struct sbi_state *sbi)
 {
-    char **prev, **curr, *n, *p;
+    struct phrase_list **prev, **curr;
+    char *n, *p;
     size_t i, wc;
 
     /*
@@ -151,7 +151,7 @@ void sentence_build_inner(struct sentence_info *si,
     /* Filter our working list to remove phrases we can't spell with the
      * letters in the current pool. */
     for (prev = curr = sbi->phrases; *prev != NULL; ++prev) {
-        if (pool_can_spell(si->pool, *prev))
+        if (pool_can_spell(si->pool, (*prev)->phrase))
             *curr++ = *prev;
         else
             --sbi->phrase_count;
@@ -178,7 +178,7 @@ void sentence_build_inner(struct sentence_info *si,
             size_t lc;
             /* Count how many words are in this phrase, and skip it if it
              * would put us over our limit. */
-            for (p = *curr, lc = 0;
+            for (p = (*curr)->phrase, lc = 0;
                  /* intentionally left blank */;
                  ++p) {
                 if (phrase_delimiter(*p)) {
@@ -200,20 +200,21 @@ void sentence_build_inner(struct sentence_info *si,
 
         /* Check if we can add this phrase here. */
         if (!((si->add_phrase_cb == NULL)
-              || si->add_phrase_cb(*curr, sbi->sentence, si->pool,
-                                   si->user_data)))
+              || si->add_phrase_cb((*curr)->phrase, (*curr)->length,
+                                   sbi->sentence, sbi->sentence_length,
+                                   si->pool, si->user_data)))
             goto next_phrase;
 
         /* If this is the outermost loop, report our new first phrase. */
         if ((sbi->depth == 0) && (si->first_phrase_cb != NULL))
-            si->first_phrase_cb(*curr, si->user_data);
+            si->first_phrase_cb((*curr)->phrase, si->user_data);
 
         /* Remove this phrase's letters from the pool. */
-        pool_subtract(si->pool, *curr);
+        pool_subtract(si->pool, (*curr)->phrase);
 
         /* Add this phrase to our sentence. */
         n = sbi->write_pos;
-        p = *curr;
+        p = (*curr)->phrase;
         while (*p != '\0')
             *n++ = *p++;
 
@@ -226,9 +227,12 @@ void sentence_build_inner(struct sentence_info *si,
                 si->sentence_cb(sbi->sentence, si->user_data);
         } else {
             struct sbi_state new_sbi;
-            size_t buf_size = (sbi->phrase_count + 1) * sizeof(char*);
+            size_t buf_size = (sbi->phrase_count + 1)
+                              * sizeof(struct phrase_list*);
 
             new_sbi.sentence = sbi->sentence;
+            new_sbi.sentence_length = sbi->sentence_length
+                                      + (*curr)->length + 1;
             new_sbi.phrases = malloc(buf_size);
             if (new_sbi.phrases != NULL) {
                 memcpy(new_sbi.phrases, sbi->phrases, buf_size);
@@ -247,7 +251,7 @@ void sentence_build_inner(struct sentence_info *si,
         }
 
         /* Restore used letters to the pool for the next cycle. */
-        pool_add(si->pool, *curr);
+        pool_add(si->pool, (*curr)->phrase);
 
 next_phrase:
         /* If this is the outermost loop, report our progress. */

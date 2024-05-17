@@ -37,8 +37,9 @@ enum mode {
 
 static size_t qwantzle_phrase_filter(char *candidate, pool_t *pool,
                                      void *user_data);
-static bool qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
-                                void *user_data);
+static bool qwantzle_add_phrase(char *candidate, size_t c_len,
+                                char *sentence, size_t s_len,
+                                pool_t *pool, void *user_data);
 static void qwantzle_solved(char *sentence, void *user_data);
 
 static void start(struct sentence_info *si, unsigned short num_threads);
@@ -101,16 +102,17 @@ qwantzle_phrase_filter(char *candidate, pool_t *pool, void *user_data)
 }
 
 bool
-qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
-                    void *user_data)
+qwantzle_add_phrase(char *candidate, size_t c_len,
+                    char *sentence, size_t s_len,
+                    pool_t *pool, void *user_data)
 {
     char *c, *s;
-    size_t c_len, s_len, clc, slc;
+    size_t clc, slc;
     pool_t antipool[POOL_SIZE];
 
     pool_reset(antipool);
 
-    for (c = candidate, c_len = 0, clc = 0;
+    for (c = candidate, clc = 0;
          /* intentionally left blank */;
          ++c) {
         if (phrase_delimiter(*c)) {
@@ -144,13 +146,7 @@ qwantzle_add_phrase(char *candidate, char *sentence, pool_t *pool,
                 return false;
             ++clc;
         }
-        ++c_len;
     }
-
-    /* Check the length of our sentence */
-    /* (we didn't need this before so putting it here is an optimization) */
-    for (s = sentence, s_len = 0; *s != '\0'; ++s)
-        ++s_len;
 
     /* Don't repeat the last phrase we used */
     if (s_len >= c_len) {

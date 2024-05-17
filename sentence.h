@@ -75,8 +75,9 @@ struct sentence_info {
      * The 'sentence' and 'pool' parameters provide the state of
      * those items before the candidate phrase is added.
      */
-    bool (*add_phrase_cb)(char *candidate, char *sentence, pool_t *pool,
-                          void *user_data);
+    bool (*add_phrase_cb)(char *candidate, size_t candidate_length,
+                          char *sentence, size_t sentence_length,
+                          pool_t *pool, void *user_data);
 
     /*
      * Callback function to indicate we have a new first phrase.
