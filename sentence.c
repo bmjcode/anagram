@@ -24,7 +24,7 @@
 /* Internal state for sentence_build_inner() */
 struct sbi_state {
     char *sentence;
-    size_t sentence_length;
+    size_t length;
     char *write_pos;
     struct phrase_list **phrases;
     size_t phrase_count;
@@ -74,7 +74,7 @@ sentence_build(struct sentence_info *si)
         return;
 
     sbi.sentence = NULL;
-    sbi.sentence_length = 0;
+    sbi.length = 0;
     sbi.phrases = NULL;
     sbi.depth = 0;
     sbi.used_words = 0;
@@ -138,12 +138,10 @@ void sentence_build_inner(struct sentence_info *si,
     char *n, *p;
     size_t i, wc;
 
-    /*
-     * We can skip the sanity checks here because this function is only
+    /* We can skip the sanity checks here because this function is only
      * ever called from sentence_build(), which already did them, or
      * recursively from itself. If something was going to overflow, it
-     * would have done so long before we got here.
-     */
+     * would have done so long before we got here. */
 
     if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
         return;
@@ -201,7 +199,7 @@ void sentence_build_inner(struct sentence_info *si,
         /* Check if we can add this phrase here. */
         if (!((si->add_phrase_cb == NULL)
               || si->add_phrase_cb((*curr)->phrase, (*curr)->length,
-                                   sbi->sentence, sbi->sentence_length,
+                                   sbi->sentence, sbi->length,
                                    si->pool, si->user_data)))
             goto next_phrase;
 
@@ -231,8 +229,6 @@ void sentence_build_inner(struct sentence_info *si,
                               * sizeof(struct phrase_list*);
 
             new_sbi.sentence = sbi->sentence;
-            new_sbi.sentence_length = sbi->sentence_length
-                                      + (*curr)->length + 1;
             new_sbi.phrases = malloc(buf_size);
             if (new_sbi.phrases != NULL) {
                 memcpy(new_sbi.phrases, sbi->phrases, buf_size);
@@ -242,6 +238,7 @@ void sentence_build_inner(struct sentence_info *si,
 
                 *n++ = ' ';
                 *n = '\0'; /* hide remnants of previous attempts */
+                new_sbi.length = n - new_sbi.sentence;
                 new_sbi.write_pos = n;
 
                 /* Call this function recursively to extend the sentence. */
