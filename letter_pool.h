@@ -25,7 +25,7 @@ typedef size_t pool_t;
 /* This assumes the alphabet is encoded in one contiguous block */
 #define POOL_START 'A'
 #define POOL_STOP  'z'
-#define POOL_SIZE  (POOL_STOP - POOL_START)
+#define POOL_SIZE  (POOL_STOP - POOL_START + 1)
 
 /*
  * Return whether 'letter' is part of the pool's alphabet.
