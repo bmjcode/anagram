@@ -167,16 +167,14 @@ phrase_list_read_filtered(struct phrase_list *prev,
     return head;
 }
 
+/* This should always return a valid path so we can display a useful error
+ * message if the list does not exist. Do not use /usr/share/dict/words
+ * because it's not portable to non-Unix systems, and its presence is not
+ * guaranteed even on those. (For example, my preferred Linux distribution
+ * does not include it in a default installation.) */
 const char *
 phrase_list_default(void)
 {
-    /* FIXME: There has to be a safer way to locate this file */
-    if (access("web2.txt", R_OK) == 0)
-        return "web2.txt";
-#ifdef __unix__
-    else if (access("/usr/share/dict/words", R_OK) == 0)
-        return "/usr/share/dict/words";
-#endif
-    else
-        return NULL;
+    /* FIXME: There has to be a better way to locate this file. */
+    return "web2.txt";
 }

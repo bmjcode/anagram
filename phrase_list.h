@@ -32,12 +32,6 @@
 
 #include "letter_pool.h"    /* for pool_t */
 
-/* Path to our default phrase list */
-#define PHRASE_LIST_DEFAULT "web2.txt"
-#ifdef __unix__ /* this isn't reliably available on other platforms */
-#  define PHRASE_LIST_SYSTEM "/usr/share/dict/words"
-#endif
-
 struct phrase_list {
     char *phrase;
     size_t length;

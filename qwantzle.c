@@ -301,7 +301,7 @@ main(int argc, char **argv)
     }
 
     if (list_path == NULL)
-        list_path = "searchlist.txt";
+        list_path = phrase_list_default();
     else if (strcmp(list_path, "-") == 0)
         fp = stdin;
 
