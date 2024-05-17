@@ -205,7 +205,8 @@ void sentence_build_inner(struct sentence_info *si,
 
         /* If this is the outermost loop, report our new first phrase. */
         if ((sbi->depth == 0) && (si->first_phrase_cb != NULL))
-            si->first_phrase_cb((*curr)->phrase, si->user_data);
+            si->first_phrase_cb((*curr)->phrase, (*curr)->length,
+                                si->user_data);
 
         /* Remove this phrase's letters from the pool. */
         pool_subtract(si->pool, (*curr)->phrase);
@@ -215,6 +216,7 @@ void sentence_build_inner(struct sentence_info *si,
         p = (*curr)->phrase;
         while (*p != '\0')
             *n++ = *p++;
+        sbi->length = n - sbi->sentence;
 
         if (pool_is_empty(si->pool)) {
             /* We've completed a sentence! */
@@ -222,7 +224,7 @@ void sentence_build_inner(struct sentence_info *si,
             if (si->sentence_cb == NULL)
                 printf("%s\n", sbi->sentence);
             else
-                si->sentence_cb(sbi->sentence, si->user_data);
+                si->sentence_cb(sbi->sentence, sbi->length, si->user_data);
         } else {
             struct sbi_state new_sbi;
             size_t buf_size = (sbi->phrase_count + 1)
@@ -238,7 +240,7 @@ void sentence_build_inner(struct sentence_info *si,
 
                 *n++ = ' ';
                 *n = '\0'; /* hide remnants of previous attempts */
-                new_sbi.length = n - new_sbi.sentence;
+                new_sbi.length = sbi->length + 1; /* include the space */
                 new_sbi.write_pos = n;
 
                 /* Call this function recursively to extend the sentence. */

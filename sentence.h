@@ -83,7 +83,7 @@ struct sentence_info {
      * Callback function to indicate we have a new first phrase.
      * This is called before building any sentences with it.
      */
-    void (*first_phrase_cb)(char *candidate, void *user_data);
+    void (*first_phrase_cb)(char *candidate, size_t length, void *user_data);
 
     /*
      * Callback function to track sentence_build()'s progress.
@@ -100,7 +100,7 @@ struct sentence_info {
      * which frees it when it returns. If you need the completed sentence
      * longer, copy it to your own memory.
     */
-    void (*sentence_cb)(char *sentence, void *user_data);
+    void (*sentence_cb)(char *sentence, size_t length, void *user_data);
 };
 
 /*

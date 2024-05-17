@@ -23,10 +23,11 @@
 #include "anagwin.h"
 
 static DWORD WINAPI RunAnagramSearchThread(LPVOID lpParam);
-static void first_phrase_cb(char *candidate, void *user_data);
+static void first_phrase_cb(char *candidate, size_t length, void *user_data);
 static void progress_cb(void *user_data);
-static void sentence_cb(char *sentence, void *user_data);
-static void sentence_cb_inner(char *sentence, struct anagram_window *window);
+static void sentence_cb(char *sentence, size_t length, void *user_data);
+static void sentence_cb_inner(char *sentence, size_t length,
+                              struct anagram_window *window);
 
 /*
  * Start searching for anagrams.
@@ -229,7 +230,7 @@ RunAnagramSearchThread(LPVOID lpParam)
  * Callback to indicate a change in first phrase.
  */
 void
-first_phrase_cb(char *candidate, void *user_data)
+first_phrase_cb(char *candidate, size_t length, void *user_data)
 {
     /* FIXME: This is sending too many window messages, which makes
      * the window unresponsive while sentence_build() is running. */
@@ -253,7 +254,7 @@ progress_cb(void *user_data)
  * Callback function when a sentence is completed.
  */
 void
-sentence_cb(char *sentence, void *user_data)
+sentence_cb(char *sentence, size_t length, void *user_data)
 {
     struct anagram_window *window = user_data;
     DWORD dwResult;
@@ -263,7 +264,7 @@ sentence_cb(char *sentence, void *user_data)
     switch (dwResult) {
         case WAIT_OBJECT_0:
             /* Our turn to add to the list */
-            sentence_cb_inner(sentence, window);
+            sentence_cb_inner(sentence, length, window);
             ReleaseMutex(window->hMutex);
             break;
 
@@ -274,11 +275,12 @@ sentence_cb(char *sentence, void *user_data)
 }
 
 void
-sentence_cb_inner(char *sentence, struct anagram_window *window)
+sentence_cb_inner(char *sentence, size_t length,
+                  struct anagram_window *window)
 {
     window->last_anagram = phrase_list_add(window->last_anagram,
                                            sentence,
-                                           strlen(sentence),
+                                           length,
                                            &window->anagram_count);
     if (window->last_anagram == NULL)
         ExitProcess(1); /* we've run out of memory */

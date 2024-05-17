@@ -40,7 +40,7 @@ static size_t qwantzle_phrase_filter(char *candidate, pool_t *pool,
 static bool qwantzle_add_phrase(char *candidate, size_t c_len,
                                 char *sentence, size_t s_len,
                                 pool_t *pool, void *user_data);
-static void qwantzle_solved(char *sentence, void *user_data);
+static void qwantzle_solved(char *sentence, size_t length, void *user_data);
 
 static void start(struct sentence_info *si, unsigned short num_threads);
 static void usage(FILE *stream, char *prog_name);
@@ -165,7 +165,7 @@ qwantzle_add_phrase(char *candidate, size_t c_len,
 }
 
 void
-qwantzle_solved(char *sentence, void *user_data)
+qwantzle_solved(char *sentence, size_t length, void *user_data)
 {
     struct phrase_list *guess = user_data;
 
