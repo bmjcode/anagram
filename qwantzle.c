@@ -83,6 +83,11 @@ qwantzle_phrase_filter(char *candidate, pool_t *letter_pool, void *user_data)
         ++length;
     }
 
+    /* "I" and "a" (case-sensitive) are the only plausible one-letter words */
+    if ((length == 1)
+        && !((candidate[0] == 'I') || (candidate[0] == 'a')))
+        return 0;
+
     return length;
 }
 
