@@ -135,7 +135,7 @@ void sentence_build_inner(struct sentence_info *si,
                           struct sbi_state *sbi)
 {
     struct phrase_list **prev, **curr;
-    char *n, *p;
+    char *c;
     size_t i, wc;
 
     /* We can skip the sanity checks here because this function is only
@@ -179,10 +179,10 @@ void sentence_build_inner(struct sentence_info *si,
             size_t lc;
             /* Count how many words are in this phrase, and skip it if it
              * would put us over our limit. */
-            for (p = (*curr)->phrase, lc = 0;
+            for (c = (*curr)->phrase, lc = 0;
                  /* intentionally left blank */;
-                 ++p) {
-                if (phrase_delimiter(*p)) {
+                 ++c) {
+                if (phrase_delimiter(*c)) {
                     if (lc >= 1) {
                         ++wc;
                         if (sbi->used_words + wc > si->max_words)
@@ -190,11 +190,11 @@ void sentence_build_inner(struct sentence_info *si,
                     }
                     /* We check for the end of the phrase here rather than
                      * in the for loop so our last phrase is counted above. */
-                    if (phrase_terminator(*p))
+                    if (phrase_terminator(*c))
                         break; /* we're done with this phrase */
                     else
                         lc = 0; /* reset the count for the next word */
-                } else if (pool_in_alphabet(*p))
+                } else if (pool_in_alphabet(*c))
                     ++lc;
             }
         }
@@ -215,15 +215,14 @@ void sentence_build_inner(struct sentence_info *si,
         pool_subtract(si->pool, (*curr)->phrase);
 
         /* Add this phrase to our sentence. */
-        n = sbi->write_pos;
-        p = (*curr)->phrase;
-        while (*p != '\0')
-            *n++ = *p++;
-        sbi->length = n - sbi->sentence;
+        c = sbi->write_pos;
+        for (i = 0; i < (*curr)->length; ++i)
+            *c++ = (*curr)->phrase[i];
+        sbi->length = c - sbi->sentence;
 
         if (pool_is_empty(si->pool)) {
             /* We've completed a sentence! */
-            *n = '\0';
+            *c = '\0';
             if (si->sentence_cb == NULL)
                 printf("%s\n", sbi->sentence);
             else
@@ -234,12 +233,12 @@ void sentence_build_inner(struct sentence_info *si,
                               * sizeof(struct phrase_list*);
 
             /* Add a space after the last word */
-            *n++ = ' ';
-            *n = '\0';
+            *c++ = ' ';
+            *c = '\0';
 
             new_sbi.sentence = sbi->sentence;
-            new_sbi.length = n - new_sbi.sentence;
-            new_sbi.write_pos = n;
+            new_sbi.length = c - new_sbi.sentence;
+            new_sbi.write_pos = c;
             new_sbi.phrases = malloc(buf_size);
             if (new_sbi.phrases == NULL)
                 goto restore_pool;
