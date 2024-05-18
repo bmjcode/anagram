@@ -1,5 +1,8 @@
 This package contains an anagram finder and other programs for constructing words and phrases from a restricted pool of letters.
 
+
+## Why I made this
+
 When I was growing up, a local restaurant had this puzzle on their kids' menu:
 
 *How many words can you spell using the letters in "leprechaun"?*
@@ -14,6 +17,8 @@ And *that* is how you cheat at a game intended to distract impatient children.
 
 
 ## Word lists
+
+Finding one anagram is an algorithms problem; finding a lot of them is a curation problem. While I believe my code is very fast, the truth is if you can measure its speed you're getting too many results to find the truly interesting and meaningful anagrams among them. The best thing you can do to get good results is to start with a well-curated word list.
 
 * **[basic_english.txt](basic_english.txt)**: words and phrases from Wikipedia's [Basic English combined wordlist](https://simple.wikipedia.org/wiki/Wikipedia:Basic_English_combined_wordlist).
 * **[web2.txt](web2.txt)**: words from *Webster's Second International Dictionary* by way of [OpenBSD](https://cvsweb.openbsd.org/src/share/dict/). The 1934 copyright has lapsed. This is the current default list.
