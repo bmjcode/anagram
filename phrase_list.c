@@ -197,33 +197,37 @@ phrase_list_default(void)
 }
 
 char *
-phrase_first_word(struct phrase_list *item, size_t *length)
+phrase_first_word(char *phrase, size_t phrase_length, size_t *word_length)
 {
     char *c;
 
-    if ((item == NULL) || (length == NULL))
+    if ((phrase == NULL)
+        || (phrase_length == 0)
+        || (word_length == NULL))
         return NULL;
 
-    *length = 0;
-    for (c = item->phrase;
+    *word_length = 0;
+    for (c = phrase;
          !phrase_delimiter(*c);
          ++c)
-        ++*length;
-    return item->phrase;
+        ++*word_length;
+    return phrase;
 }
 
 char *
-phrase_last_word(struct phrase_list *item, size_t *length)
+phrase_last_word(char *phrase, size_t phrase_length, size_t *word_length)
 {
     char *c;
 
-    if ((item == NULL) || (length == NULL))
+    if ((phrase == NULL)
+        || (phrase_length == 0)
+        || (word_length == NULL))
         return NULL;
 
-    *length = 0;
-    for (c = item->phrase + item->length - 1;
+    *word_length = 0;
+    for (c = phrase + phrase_length - 1;
          !phrase_delimiter(*c);
          --c)
-        ++*length;
+        ++*word_length;
     return c + 1; /* we stopped on the delimiter */
 }

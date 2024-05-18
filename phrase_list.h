@@ -130,19 +130,26 @@ const char *phrase_list_default(void);
 /*
  * Get the position and length of the first word in a phrase.
  *
- * The return value is a pointer to the first character of the word in
- * item->phrase. Do not free it. The caller should use the 'length' value
- * to ignore subsequent words in phrases with multiple words.
+ * The return value is a pointer to the first character of the word
+ * within the phrase. Do not free it.
+ *
+ * The 'word_length' parameter is set to the length of the word.
+ * The caller should use this value to ignore subsequent words in
+ * phrases with multiple words.
  */
-char *phrase_first_word(struct phrase_list *item, size_t *length);
+char *phrase_first_word(char *phrase, size_t phrase_length,
+                        size_t *word_length);
 
 /*
  * Get the position and length of the last word in a phrase.
  *
- * The return value is a pointer to the first character of the word in
- * item->phrase. Do not free it.
+ * The return value is a pointer to the first character of the word
+ * within the phrase. Do not free it.
+ *
+ * The 'word_length' parameter is set to the length of the word.
  */
-char *phrase_last_word(struct phrase_list *item, size_t *length);
+char *phrase_last_word(char *phrase, size_t phrase_length,
+                       size_t *word_length);
 
 /*
  * Use this in your phrase filter to identify non-alphabetic characters
