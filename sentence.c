@@ -171,6 +171,9 @@ void sentence_build_inner(struct sentence_info *si,
         if ((si->canceled_cb != NULL) && si->canceled_cb(si->user_data))
             break;
 
+        /* Reset the sentence length after our previous attempt. */
+        sbi->length = sbi->write_pos - sbi->sentence;
+
         wc = 0;
         if (si->max_words != 0) {
             size_t lc;
@@ -230,25 +233,27 @@ void sentence_build_inner(struct sentence_info *si,
             size_t buf_size = (sbi->phrase_count + 1)
                               * sizeof(struct phrase_list*);
 
+            /* Add a space after the last word */
+            *n++ = ' ';
+            *n = '\0';
+
             new_sbi.sentence = sbi->sentence;
+            new_sbi.length = n - new_sbi.sentence;
+            new_sbi.write_pos = n;
             new_sbi.phrases = malloc(buf_size);
-            if (new_sbi.phrases != NULL) {
-                memcpy(new_sbi.phrases, sbi->phrases, buf_size);
-                new_sbi.phrase_count = sbi->phrase_count;
-                new_sbi.depth = sbi->depth + 1;
-                new_sbi.used_words = sbi->used_words + wc;
+            if (new_sbi.phrases == NULL)
+                goto restore_pool;
+            memcpy(new_sbi.phrases, sbi->phrases, buf_size);
+            new_sbi.phrase_count = sbi->phrase_count;
+            new_sbi.depth = sbi->depth + 1;
+            new_sbi.used_words = sbi->used_words + wc;
 
-                *n++ = ' ';
-                *n = '\0'; /* hide remnants of previous attempts */
-                new_sbi.length = sbi->length + 1; /* include the space */
-                new_sbi.write_pos = n;
-
-                /* Call this function recursively to extend the sentence. */
-                sentence_build_inner(si, &new_sbi);
-                free(new_sbi.phrases);
-            }
+            /* Call this function recursively to extend the sentence. */
+            sentence_build_inner(si, &new_sbi);
+            free(new_sbi.phrases);
         }
 
+restore_pool:
         /* Restore used letters to the pool for the next cycle. */
         pool_add(si->pool, (*curr)->phrase);
 
