@@ -224,8 +224,13 @@ phrase_last_word(char *phrase, size_t phrase_length, size_t *word_length)
         || (word_length == NULL))
         return NULL;
 
+    /* Find the last non-delimiter in the phrase */
+    c = phrase + phrase_length - 1;
+    while (phrase_delimiter(*c))
+        --c;
+
     *word_length = 0;
-    for (c = phrase + phrase_length - 1;
+    for (;
          !phrase_delimiter(*c);
          --c)
         ++*word_length;
