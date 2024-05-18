@@ -195,3 +195,35 @@ phrase_list_default(void)
     /* FIXME: There has to be a better way to locate this file. */
     return "web2.txt";
 }
+
+char *
+phrase_first_word(struct phrase_list *item, size_t *length)
+{
+    char *c;
+
+    if ((item == NULL) || (length == NULL))
+        return NULL;
+
+    *length = 0;
+    for (c = item->phrase;
+         !phrase_delimiter(*c);
+         ++c)
+        ++*length;
+    return item->phrase;
+}
+
+char *
+phrase_last_word(struct phrase_list *item, size_t *length)
+{
+    char *c;
+
+    if ((item == NULL) || (length == NULL))
+        return NULL;
+
+    *length = 0;
+    for (c = item->phrase + item->length - 1;
+         !phrase_delimiter(*c);
+         --c)
+        ++*length;
+    return c + 1; /* we stopped on the delimiter */
+}

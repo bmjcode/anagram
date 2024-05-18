@@ -128,6 +128,23 @@ bool phrase_list_write(struct phrase_list *head, FILE *fp);
 const char *phrase_list_default(void);
 
 /*
+ * Get the position and length of the first word in a phrase.
+ *
+ * The return value is a pointer to the first character of the word in
+ * item->phrase. Do not free it. The caller should use the 'length' value
+ * to ignore subsequent words in phrases with multiple words.
+ */
+char *phrase_first_word(struct phrase_list *item, size_t *length);
+
+/*
+ * Get the position and length of the last word in a phrase.
+ *
+ * The return value is a pointer to the first character of the word in
+ * item->phrase. Do not free it.
+ */
+char *phrase_last_word(struct phrase_list *item, size_t *length);
+
+/*
  * Use this in your phrase filter to identify non-alphabetic characters
  * that cannot be included in a phrase. Phrases that do contain such
  * characters should be rejected immediately.
