@@ -29,6 +29,7 @@
 #include "letter_pool.h"
 #include "phrase_list.h"
 #include "sentence.h"
+#include "grammar.h"
 
 enum mode {
     QWANTZLE_SOLVER,
@@ -112,6 +113,17 @@ qwantzle_add_phrase(char *candidate, size_t c_len,
 
     pool_reset(antipool);
 
+    if (s_len >= c_len) {
+        /* Don't repeat the last phrase we used */
+        s = sentence + s_len - c_len - 1;
+        if (strncmp(candidate, s, c_len) == 0)
+            return false;
+    }
+
+    /* Block obviously ungrammatical phrases */
+    if (grammar_prohibits(sentence, s_len, candidate, c_len, GA_NO_REPEATS))
+        return false;
+
     for (c = candidate, clc = 0;
          /* intentionally left blank */;
          ++c) {
@@ -146,13 +158,6 @@ qwantzle_add_phrase(char *candidate, size_t c_len,
                 return false;
             ++clc;
         }
-    }
-
-    /* Don't repeat the last phrase we used */
-    if (s_len >= c_len) {
-        s = sentence + s_len - c_len - 1;
-        if (strncmp(candidate, s, c_len) == 0)
-            return false;
     }
 
     if (pool_counts_match(antipool, pool)) {
