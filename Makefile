@@ -6,8 +6,8 @@ LDFLAGS ?=
 PTHREAD_CFLAGS = -DENABLE_PTHREAD -pthread
 PTHREAD_LDFLAGS = -pthread
 
-DEFAULT = anagram is_spellable spellable qwantzle
-all: anagram is_spellable spellable qwantzle
+DEFAULT = all
+all: anagram spellable qwantzle
 
 anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -o $@ $+ $(LDFLAGS) $(PTHREAD_LDFLAGS)
