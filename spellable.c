@@ -102,7 +102,7 @@ main(int argc, char **argv)
         char *c;
         size_t lc = 0;
         for (c = buf; *c != '\0'; ++c) {
-            if (isspace(*c)) {
+            if (isspace((unsigned char)(*c))) {
                 /* Limit one word per line */
                 *c = '\0';
                 break;

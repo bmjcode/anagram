@@ -157,7 +157,8 @@ char *phrase_last_word(char *phrase, size_t phrase_length,
  * characters should be rejected immediately.
  */
 #define phrase_cannot_include(c) \
-        (iscntrl(c) || !(((c) == ' ') || ispunct(c)))
+        (iscntrl((unsigned char)(c)) \
+         || !(((c) == ' ') || ispunct((unsigned char)(c))))
 
 /*
  * Use this in your phrase filter to identify the end of a phrase.

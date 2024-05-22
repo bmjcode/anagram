@@ -92,7 +92,8 @@ pool_can_spell(pool_t *pool, const char *phrase)
             pos = *c - POOL_START;
             if (++letter_count[pos] > pool[pos])
                 return false;
-        } else if (!(ispunct(*c) || isspace(*c)))
+        } else if (!(ispunct((unsigned char)(*c))
+                     || isspace((unsigned char)(*c))))
             return false;
         ++c;
     }
