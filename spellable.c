@@ -47,10 +47,10 @@ main(int argc, char **argv)
     const char *list_path;
     pool_t pool[POOL_SIZE];
     int i, opt;
-    size_t letter_count;
+    size_t desired_lc; /* letter count */
 
     pool_reset(pool);
-    letter_count = 0;
+    desired_lc = 0;
 
     fp = NULL;
     list_path = NULL;
@@ -62,7 +62,7 @@ main(int argc, char **argv)
                 return 0;
             case 'c':
                 /* Require a specific letter count */
-                letter_count = strtoul(optarg, NULL, 0);
+                desired_lc = strtoul(optarg, NULL, 0);
                 break;
             case 'f':
                 /* Filter mode */
@@ -108,8 +108,8 @@ main(int argc, char **argv)
                 ++lc;
         *c = '\0'; /* this trims the unwanted newline from fgets()
                     * since phrase_terminator() stops on '\n' */
-        if (((letter_count == 0)
-             || (lc == letter_count))
+        if (((desired_lc == 0)
+             || (lc == desired_lc))
             && pool_can_spell(pool, buf))
             printf("%s\n", buf);
     }
