@@ -101,15 +101,15 @@ main(int argc, char **argv)
     while (fgets(buf, sizeof(buf), fp) != NULL) {
         char *c;
         size_t lc = 0;
-        for (c = buf; *c != '\0'; ++c) {
-            if (isspace((unsigned char)(*c))) {
-                /* Limit one word per line */
-                *c = '\0';
-                break;
-            } else if (pool_in_alphabet(*c))
+        for (c = buf;
+             !phrase_terminator(*c);
+             ++c)
+            if (pool_in_alphabet(*c))
                 ++lc;
-        }
-        if (((letter_count == 0) || (lc == letter_count))
+        *c = '\0'; /* this trims the unwanted newline from fgets()
+                    * since phrase_terminator() stops on '\n' */
+        if (((letter_count == 0)
+             || (lc == letter_count))
             && pool_can_spell(pool, buf))
             printf("%s\n", buf);
     }
