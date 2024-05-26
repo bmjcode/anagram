@@ -81,6 +81,39 @@ struct phrase_list *phrase_list_add(struct phrase_list *prev,
 void phrase_list_free(struct phrase_list *first);
 
 /*
+ * Sort a phrase list in place.
+ *
+ * Returns a pointer to the new first item.
+ */
+struct phrase_list *phrase_list_sort(struct phrase_list *orig, size_t count);
+
+/*
+ * Remove duplicate items from a sorted phrase list.
+ *
+ * The number of phrases after removing duplicates is stored in 'count'.
+ */
+void phrase_list_uniq(struct phrase_list *first, size_t *count);
+
+/*
+ * More aggressively remove duplicate items from a sorted phrase list,
+ * taking capitalization into account.
+ *
+ * If a phrase is listed several times with different capitalization,
+ * the one with the most lowercase letters is kept; the others are
+ * discarded. This is useful when extracting phrases from a document.
+ * The presumption is that the most-lowercase form is standard and
+ * any capitalization is incidental, for example from a phrase being
+ * used to start a sentence. If a phrase does not have a more-lowercase
+ * counterpart, it is likewise presumed to always be written that way,
+ * as is the case for proper nouns and acronyms.
+ *
+ * Returns a pointer to the new first item.
+ * The number of phrases after removing duplicates is stored in 'count'.
+ */
+struct phrase_list *phrase_list_normalize(struct phrase_list *first,
+                                          size_t *count);
+
+/*
  * Read a phrase list from a file.
  *
  * The file pointed to by 'fp' should be opened in mode "r".

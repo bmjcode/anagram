@@ -6,3 +6,12 @@ anagram
 is_spellable
 spellable
 qwantzle
+wordlist
+*.a
+*.exe
+*.o
+*.swp
+anagram
+is_spellable
+spellable
+qwantzle

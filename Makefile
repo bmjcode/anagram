@@ -7,7 +7,7 @@ PTHREAD_CFLAGS = -DENABLE_PTHREAD -pthread
 PTHREAD_LDFLAGS = -pthread
 
 DEFAULT = all
-all: anagram spellable qwantzle
+all: anagram spellable qwantzle wordlist
 
 anagram: anagram.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -o $@ $+ $(LDFLAGS) $(PTHREAD_LDFLAGS)
@@ -25,6 +25,9 @@ spellable: spellable.o letter_pool.o phrase_list.o
 qwantzle: qwantzle.o letter_pool.o phrase_list.o sentence.o
 	$(CC) -o $@ $+ $(LDFLAGS) $(PTHREAD_LDFLAGS)
 
+wordlist: wordlist.o letter_pool.o phrase_list.o
+	$(CC) -o $@ $+ $(LDFLAGS)
+
 # Special rules for source files using pthreads
 anagram.o: anagram.c
 	$(CC) -c $(CFLAGS) $(PTHREAD_CFLAGS) -o $@ $<
@@ -37,5 +40,5 @@ anagwin/%.o: anagwin/%.c
 	$(CC) -c $(CFLAGS) -I. -o $@ $<
 
 clean:
-	rm -f anagram is_spellable spellable qwantzle *.exe *.o
+	rm -f anagram is_spellable spellable qwantzle wordlist *.exe *.o
 	rm -f anagwin/*.o

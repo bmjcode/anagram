@@ -17,9 +17,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "phrase_list.h"
+
+static int phrase_compare(const void *left, const void *right);
 
 size_t
 phrase_filter_default(char *candidate, pool_t *letter_pool, void *user_data)
@@ -118,6 +121,135 @@ phrase_list_free(struct phrase_list *first)
         free(curr);
         curr = next;
     }
+}
+
+struct phrase_list *
+phrase_list_sort(struct phrase_list *orig, size_t count)
+{
+    struct phrase_list *first, *curr, **items;
+    size_t i;
+
+    if ((orig == NULL) || (count == 0))
+        return NULL;
+
+    first = orig; /* for now */
+
+    items = malloc(count * sizeof(struct phrase_list*));
+    if (items == NULL)
+        goto cleanup;
+
+    for (i = 0, curr = first;
+         (i < count) && (curr != NULL);
+         curr = curr->next, ++i)
+        items[i] = curr;
+
+    qsort(items, count, sizeof(struct phrase_list*), phrase_compare);
+
+    first = items[0];
+    for (i = 0; i + 1 < count; ++i)
+        items[i]->next = items[i + 1];
+    items[count - 1]->next = NULL;
+
+cleanup:
+    if (items != NULL)
+        free(items);
+    return first;
+}
+
+void
+phrase_list_uniq(struct phrase_list *first, size_t *count)
+{
+    struct phrase_list *curr, *skipped;
+
+    for (curr = first; curr != NULL; curr = curr->next) {
+        while ((curr->next != NULL)
+               && (curr->next->length == curr->length)
+               && (strcmp(curr->next->phrase, curr->phrase) == 0)) {
+            /* The next item is a duplicate */
+            skipped = curr->next;
+            curr->next = skipped->next;
+
+            if (skipped->phrase != NULL)
+                free(skipped->phrase);
+            free(skipped);
+
+            if (count != NULL)
+                --*count;
+        }
+    }
+}
+
+struct phrase_list *
+phrase_list_normalize(struct phrase_list *first, size_t *count)
+{
+    struct phrase_list *prev, *curr, *next, *candidate;
+    size_t i;
+
+    if (first == NULL)
+        return NULL;
+
+    phrase_list_uniq(first, count);
+
+    /* We're relying on the assumption that uppercase sorts first, which
+     * makes the last instance of a given phrase the most-lowercase version
+     * and therefore the one to keep. */
+    prev = NULL;
+    curr = first;
+    while (!((curr == NULL) || (curr->phrase == NULL))) {
+        char lp[curr->length + 1]; /* lowercase phrase */
+
+        /* Stop when we get to words that are already lowercase */
+        if (islower((unsigned char) curr->phrase[0]))
+            break;
+
+        /* Use lowercase for case-insensitive comparisons */
+        for (i = 0; i < curr->length; ++i)
+            lp[i] = tolower((unsigned char) curr->phrase[i]);
+        lp[curr->length] = '\0';
+
+        next = curr->next;
+        for (candidate = next;
+             !((candidate == NULL) || (candidate->phrase == NULL));
+             candidate = candidate->next) {
+            /* Did we miss it? */
+            if (candidate->phrase[0] > lp[0])
+                goto no_more_candidates;
+
+            /* If they're not the same length, they're not the same word */
+            if (candidate->length != curr->length)
+                goto next_candidate;
+
+            /* If their letters don't match, they're not the same word */
+            for (i = 0; i < candidate->length; ++i) {
+                if (tolower((unsigned char) candidate->phrase[i]) != lp[i])
+                    goto next_candidate;
+            }
+
+            /* If we haven't bailed out yet, they must be the same word,
+             * so discard the more-uppercase version */
+            if (prev == NULL)
+                first = next;
+            else
+                prev->next = next;
+
+            free(curr->phrase);
+            free(curr);
+            curr = NULL;
+
+            if (count != NULL)
+                --*count;
+            break;
+
+next_candidate:
+            continue; /* avoid "label at end of compound statement" errors */
+        }
+
+no_more_candidates:
+        if (curr != NULL)
+            prev = curr;
+        curr = next;
+    }
+    return first;
 }
 
 struct phrase_list *
@@ -235,4 +367,20 @@ phrase_last_word(char *phrase, size_t phrase_length, size_t *word_length)
          --c)
         ++*word_length;
     return c + 1; /* we stopped on the delimiter */
+}
+
+/*
+ * Compare two struct phrase_list* items for sorting with qsort().
+ */
+int
+phrase_compare(const void *left_, const void *right_)
+{
+    const struct phrase_list
+        *left = *(struct phrase_list **)(left_),
+        *right = *(struct phrase_list **)(right_);
+
+    if ((left == NULL) || (right == NULL))
+        return 0; /* vacuous */
+    else
+        return strcmp(left->phrase, right->phrase);
 }
