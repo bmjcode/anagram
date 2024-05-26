@@ -66,6 +66,9 @@ extract_words(FILE *fp, struct phrase_list *prev, size_t *word_count)
                     goto next_line;
                 else if (isdigit(*c))
                     goto next_word;
+                else if (ispunct(*c) && ispunct(*(c + 1)))
+                    *(c + 1) = ' '; /* consecutive punctuation marks
+                                     * indicate a word boundary */
             }
 
             /* Trim final non-alphabetic characters */
