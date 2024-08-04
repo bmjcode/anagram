@@ -16,7 +16,7 @@ All these years later, I got curious how many more words could be spelled with t
 And *that* is how you cheat at a game intended to distract impatient children.
 
 
-## Phrase lists
+## A word about phrase lists
 
 Finding anagrams fast is an algorithms problem; finding interesting and meaningful ones is a curation problem. Since you can only implement a [combinatorial explosion](https://en.wikipedia.org/wiki/Combinatorial_explosion) so efficiently, I prefer to focus on the latter. The best thing you can do to get good results is to start with a well-curated phrase list.
 
