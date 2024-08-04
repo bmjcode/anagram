@@ -18,10 +18,10 @@ And *that* is how you cheat at a game intended to distract impatient children.
 
 ## Phrase lists
 
-Finding one anagram is an algorithms problem; finding a lot of them is a curation problem. While I believe my code is very fast, the truth is if you can measure its speed you're getting too many results to find the truly interesting and meaningful anagrams among them. The best thing you can do to get good results is to start with a well-curated phrase list.
+Finding anagrams fast is an algorithms problem; finding interesting and meaningful ones is a curation problem. Since you can only implement a [combinatorial explosion](https://en.wikipedia.org/wiki/Combinatorial_explosion) so efficiently, I prefer to focus on the latter. The best thing you can do to get good results is to start with a well-curated phrase list.
 
 * **[basic_english.txt](basic_english.txt)**: words and phrases from Wikipedia's [Basic English combined wordlist](https://simple.wikipedia.org/wiki/Wikipedia:Basic_English_combined_wordlist).
 * **[shakespearean.txt](shakespearean.txt)**: words and phrases from the [complete works of William Shakespeare](https://gutenberg.org/ebooks/100) as published by Project Gutenberg. In need of some editing.
 * **[web2.txt](web2.txt)**: words from *Webster's Second International Dictionary* by way of [OpenBSD](https://cvsweb.openbsd.org/src/share/dict/). The 1934 copyright has lapsed. This is the current default list.
 
-You can generate your own phrase list from any plain-text document using the included `wordlist` tool. The terminology here is deliberate, if a bit confusing. We call it a *phrase* list because a phrase can include multiple words, but the list generation tool is `wordlist` because it only lists words individually.
+The included `wordlist` tool lists unique words in a document. You can use this as a starting point to create your own phrase list. Note a *phrase* in our usage can consist of multiple words, including spaces and punctuation, but the tool by itself only lists words individually.
